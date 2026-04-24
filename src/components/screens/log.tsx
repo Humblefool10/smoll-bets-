@@ -6,6 +6,8 @@ import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
 import { StatusBar } from "@/components/status-bar";
 import { BackButton } from "@/components/back-button";
+import { Confetti } from "@/components/confetti";
+import { playChime } from "@/lib/sounds";
 
 export function LogScreen({
   onBack,
@@ -13,6 +15,11 @@ export function LogScreen({
   onBack?: () => void;
 }) {
   const [state, setState] = useState<"idle" | "done">("idle");
+
+  const handleLog = () => {
+    setState("done");
+    playChime();
+  };
 
   return (
     <div
@@ -89,7 +96,10 @@ export function LogScreen({
 
             {/* honor log */}
             <div
-              onClick={() => setState("done")}
+              role="button"
+              tabIndex={0}
+              onClick={handleLog}
+              onKeyDown={(e) => e.key === "Enter" && handleLog()}
               className="flex gap-[14px] items-center cursor-pointer shadow-brutal"
               style={{
                 borderRadius: 14,
@@ -146,7 +156,10 @@ export function LogScreen({
 
             {/* photo proof */}
             <div
-              onClick={() => setState("done")}
+              role="button"
+              tabIndex={0}
+              onClick={handleLog}
+              onKeyDown={(e) => e.key === "Enter" && handleLog()}
               className="flex gap-[14px] items-center cursor-pointer shadow-brutal"
               style={{
                 borderRadius: 14,
@@ -207,8 +220,9 @@ export function LogScreen({
 
       {state === "done" && (
         <div className="flex-1 flex flex-col items-center justify-center px-7 gap-5 text-center">
+          <Confetti count={35} />
           <div
-            className="flex items-center justify-center shadow-brutal"
+            className="flex items-center justify-center shadow-brutal celebrate-pop"
             style={{
               width: 96,
               height: 96,
@@ -218,6 +232,7 @@ export function LogScreen({
             }}
           >
             <svg
+              className="check-draw"
               width="48"
               height="48"
               viewBox="0 0 48 48"

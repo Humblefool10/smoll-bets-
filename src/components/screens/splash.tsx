@@ -2,149 +2,196 @@
 
 import { useState, useEffect } from "react";
 import { t } from "@/lib/tokens";
+import { Avatar } from "@/components/avatar";
+import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
 
 export function SplashScreen({ onContinue }: { onContinue: () => void }) {
-  const [show, setShow] = useState(false);
-  const [showTagline, setShowTagline] = useState(false);
-  const [showButton, setShowButton] = useState(false);
+  const [phase, setPhase] = useState(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setShow(true), 100);
-    const t2 = setTimeout(() => setShowTagline(true), 600);
-    const t3 = setTimeout(() => setShowButton(true), 1100);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
+    const timers = [
+      setTimeout(() => setPhase(1), 100),
+      setTimeout(() => setPhase(2), 500),
+      setTimeout(() => setPhase(3), 900),
+      setTimeout(() => setPhase(4), 1300),
+    ];
+    return () => timers.forEach(clearTimeout);
   }, []);
+
+  const fade = (step: number) => ({
+    opacity: phase >= step ? 1 : 0,
+    transform: phase >= step ? "translateY(0)" : "translateY(12px)",
+    transition: "all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+  });
 
   return (
     <div
-      className="flex flex-col items-center justify-center h-full px-8"
+      className="flex flex-col h-full overflow-hidden"
       style={{ background: t.bg }}
     >
-      {/* logo mark */}
-      <div
-        className="flex items-center justify-center mb-6"
-        style={{
-          width: 96,
-          height: 96,
-          borderRadius: 28,
-          border: `3px solid ${t.border}`,
-          background: t.primary,
-          boxShadow: t.shadow,
-          opacity: show ? 1 : 0,
-          transform: show ? "scale(1)" : "scale(0.8)",
-          transition: "all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: t.font,
-            fontWeight: 700,
-            fontSize: 42,
-            color: t.text,
-          }}
-        >
-          sb
-        </span>
-      </div>
-
-      {/* wordmark */}
-      <div
-        style={{
-          fontFamily: t.font,
-          fontWeight: 700,
-          fontSize: 36,
-          color: t.text,
-          letterSpacing: -0.5,
-          opacity: show ? 1 : 0,
-          transform: show ? "translateY(0)" : "translateY(10px)",
-          transition: "all 0.5s ease 0.2s",
-        }}
-      >
-        smoll bets
-      </div>
-
-      {/* tagline */}
-      <div
-        className="text-center mt-3 max-w-[260px]"
-        style={{
-          fontFamily: t.fontBody,
-          fontSize: 16,
-          color: t.textMuted,
-          lineHeight: 1.5,
-          opacity: showTagline ? 1 : 0,
-          transform: showTagline ? "translateY(0)" : "translateY(10px)",
-          transition: "all 0.5s ease",
-        }}
-      >
-        make a bet with your people. build the habit, or pay up.
-      </div>
-
-      {/* value props */}
-      <div
-        className="flex flex-col gap-3 mt-10 w-full max-w-[300px]"
-        style={{
-          opacity: showTagline ? 1 : 0,
-          transform: showTagline ? "translateY(0)" : "translateY(10px)",
-          transition: "all 0.5s ease 0.2s",
-        }}
-      >
-        {[
-          { emoji: "🤝", text: "bet with friends, not an app" },
-          { emoji: "🏆", text: "loser pays up, winner collects" },
-          { emoji: "👀", text: "your circle is always watching" },
-        ].map((item, i) => (
+      <div className="flex-1 px-6 pt-12 pb-6 flex flex-col">
+        {/* logo + name */}
+        <div className="flex items-center gap-3 mb-1" style={fade(1)}>
           <div
-            key={i}
-            className="flex items-center gap-3"
+            className="flex items-center justify-center"
             style={{
-              padding: "10px 14px",
-              borderRadius: 10,
-              background: t.bgAlt,
+              width: 40,
+              height: 40,
+              borderRadius: 12,
               border: `2px solid ${t.border}`,
+              background: t.primary,
               boxShadow: t.shadowSm,
             }}
           >
-            <span style={{ fontSize: 20 }}>{item.emoji}</span>
             <span
               style={{
-                fontFamily: t.fontBody,
-                fontSize: 14,
-                fontWeight: 500,
+                fontFamily: t.font,
+                fontWeight: 700,
+                fontSize: 18,
                 color: t.text,
               }}
             >
-              {item.text}
+              sb
             </span>
           </div>
-        ))}
-      </div>
+          <div
+            style={{
+              fontFamily: t.font,
+              fontWeight: 700,
+              fontSize: 26,
+              color: t.text,
+              letterSpacing: -0.5,
+            }}
+          >
+            smoll bets
+          </div>
+        </div>
 
-      {/* CTA */}
-      <div
-        className="w-full max-w-[300px] mt-10"
-        style={{
-          opacity: showButton ? 1 : 0,
-          transform: showButton ? "translateY(0)" : "translateY(10px)",
-          transition: "all 0.5s ease",
-        }}
-      >
-        <BigButton onClick={onContinue} className="w-full">
-          let&apos;s go
-        </BigButton>
-        <div
-          className="text-center mt-3"
-          style={{
-            fontFamily: t.fontBody,
-            fontSize: 12,
-            color: t.textMuted,
-          }}
-        >
-          no download needed. works in your browser.
+        <div className="mb-5" style={fade(1)}>
+          <div
+            style={{
+              fontFamily: t.fontBody,
+              fontSize: 15,
+              color: t.textMuted,
+              lineHeight: 1.4,
+            }}
+          >
+            challenge your friends. build habits together. loser pays up.
+          </div>
+        </div>
+
+        {/* the product shown as a compact circle card */}
+        <div style={fade(2)}>
+          <div
+            className="shadow-brutal"
+            style={{
+              borderRadius: 14,
+              border: `2px solid ${t.border}`,
+              background: t.primaryBg,
+              padding: 14,
+            }}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div
+                style={{
+                  fontFamily: t.font,
+                  fontWeight: 700,
+                  fontSize: 20,
+                  color: t.text,
+                }}
+              >
+                gym rats
+              </div>
+              <Pill color={t.bgAlt}>4 weeks</Pill>
+            </div>
+            <div className="flex gap-2 flex-wrap mb-2">
+              <Pill color={t.primaryLight}>run 3x per week</Pill>
+              <Pill color={t.danger + "22"}>loser cooks dinner</Pill>
+            </div>
+            <div className="flex items-center gap-1">
+              {["Maya P", "Jordan K", "Sam T"].map((name, i) => (
+                <div
+                  key={name}
+                  style={{
+                    marginLeft: i === 0 ? 0 : -8,
+                    zIndex: 3 - i,
+                  }}
+                >
+                  <Avatar name={name} size={26} />
+                </div>
+              ))}
+              <span
+                className="ml-2"
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 12,
+                  color: t.textMuted,
+                }}
+              >
+                3 in · 3 spots left
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* how it works — compact, single lines */}
+        <div className="mt-5" style={fade(3)}>
+          <div
+            className="mb-2"
+            style={{
+              fontFamily: t.font,
+              fontWeight: 700,
+              fontSize: 14,
+              color: t.textMuted,
+            }}
+          >
+            how it works
+          </div>
+
+          {[
+            { icon: "🎯", text: "pick a habit, set the stakes" },
+            { icon: "📲", text: "invite your people with a link" },
+            { icon: "👀", text: "track progress, roast the slackers" },
+            { icon: "🍳", text: "losers pay up, winners collect" },
+          ].map((step) => (
+            <div
+              key={step.text}
+              className="flex items-center gap-3"
+              style={{ padding: "6px 0" }}
+            >
+              <span style={{ fontSize: 16 }}>{step.icon}</span>
+              <span
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 14,
+                  color: t.text,
+                  fontWeight: 500,
+                }}
+              >
+                {step.text}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex-1" />
+
+        {/* CTA */}
+        <div className="mt-4" style={fade(4)}>
+          <BigButton onClick={onContinue} className="w-full">
+            start a circle
+          </BigButton>
+          <div
+            className="text-center mt-2"
+            style={{
+              fontFamily: t.fontBody,
+              fontSize: 12,
+              color: t.textMuted,
+            }}
+          >
+            free. works in your browser. no app download.
+          </div>
         </div>
       </div>
     </div>

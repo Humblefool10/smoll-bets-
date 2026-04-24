@@ -74,6 +74,96 @@ button {
   color: inherit;
 }
 
+/* ── screen transitions ─────────────────────────────────────────── */
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideInFromLeft {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.screen-enter-right {
+  animation: slideInFromRight 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.screen-enter-left {
+  animation: slideInFromLeft 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ── checkmark draw ────────────────────────────────────────────── */
+@keyframes checkDraw {
+  from { stroke-dashoffset: 60; }
+  to { stroke-dashoffset: 0; }
+}
+.check-draw path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: checkDraw 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.2s forwards;
+}
+
+/* ── celebration bounce on checkmark container ─────────────────── */
+@keyframes celebratePop {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); }
+  70% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.celebrate-pop {
+  animation: celebratePop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* ── confetti pieces ───────────────────────────────────────────── */
+@keyframes confettiFall {
+  0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translateY(120vh) rotate(720deg) scale(0.3); opacity: 0; }
+}
+.confetti-piece {
+  position: fixed;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confettiFall var(--fall-duration, 2.5s) cubic-bezier(0.25, 0.46, 0.45, 0.94) var(--fall-delay, 0s) forwards;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ── streak pulse ──────────────────────────────────────────────── */
+@keyframes streakPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+.streak-pulse {
+  display: inline-block;
+  animation: streakPulse 2s ease-in-out infinite;
+}
+
+/* ── staggered list entry ──────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.stagger-in {
+  opacity: 0;
+  animation: fadeInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.stagger-in:nth-child(1) { animation-delay: 0.05s; }
+.stagger-in:nth-child(2) { animation-delay: 0.1s; }
+.stagger-in:nth-child(3) { animation-delay: 0.15s; }
+.stagger-in:nth-child(4) { animation-delay: 0.2s; }
+.stagger-in:nth-child(5) { animation-delay: 0.25s; }
+.stagger-in:nth-child(6) { animation-delay: 0.3s; }
+
+/* ── number count-up ───────────────────────────────────────────── */
+@keyframes numberPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.number-pop {
+  animation: numberPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
 /* reduced motion: disable all animations */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

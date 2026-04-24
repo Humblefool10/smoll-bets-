@@ -451,17 +451,15 @@ export function CircleLobbyScreen({
             : `need at least ${minToStart} people to start the challenge.`}
         </div>
 
-        <div className="h-20" />
       </div>
 
-      {/* start button — only active when minimum members reached */}
-      <div className="absolute bottom-6 left-5 right-5">
+      <div className="px-5 pb-6 pt-3 shrink-0">
         {canStart ? (
           <BigButton bg={t.positive} onClick={onStart} className="w-full">
             start the challenge
           </BigButton>
         ) : (
-          <BigButton bg={t.bgAlt} className="w-full">
+          <BigButton bg={t.bgAlt} disabled className="w-full">
             waiting for people to join...
           </BigButton>
         )}

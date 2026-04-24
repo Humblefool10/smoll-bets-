@@ -118,7 +118,7 @@ export function CircleScreen({
         {members.map((m, i) => (
           <div
             key={i}
-            className="flex items-center gap-3"
+            className="flex items-center gap-3 stagger-in"
             style={{
               borderRadius: 12,
               border: `2px solid ${m.isMe ? t.primary : t.border}`,
@@ -206,7 +206,7 @@ export function CircleScreen({
                     color: t.textMuted,
                   }}
                 >
-                  {m.streak}d 🔥
+                  {m.streak}d <span className="streak-pulse">🔥</span>
                 </div>
               )}
               {m.streak === 0 && (
@@ -241,7 +241,7 @@ export function CircleScreen({
         {feed.map((f, i) => (
           <div
             key={i}
-            className="flex gap-[10px] items-start shadow-brutal-sm"
+            className="flex gap-[10px] items-start shadow-brutal-sm stagger-in"
             style={{
               borderRadius: 12,
               border: `2px solid ${t.border}`,
@@ -287,12 +287,11 @@ export function CircleScreen({
           </div>
         ))}
 
-        <div className="h-20" />
       </div>
 
-      {/* floating CTA */}
-      <div className="absolute bottom-6 left-5 right-5">
-        <BigButton bg={t.primary} onClick={onLog}>
+      {/* docked bottom — same pattern as create-circle, lobby, etc. */}
+      <div className="px-5 pb-6 pt-3 shrink-0">
+        <BigButton bg={t.positive} onClick={onLog} className="w-full">
           log my run
         </BigButton>
       </div>

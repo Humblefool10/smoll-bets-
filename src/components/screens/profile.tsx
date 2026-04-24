@@ -138,10 +138,10 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
             { label: "active", value: stats.circlesActive },
             { label: "win rate", value: `${stats.winRate}%` },
             { label: "streak", value: `${stats.currentStreak}d 🔥` },
-          ].map((s) => (
+          ].map((s, i) => (
             <div
               key={s.label}
-              className="text-center shadow-brutal-sm"
+              className="text-center shadow-brutal-sm stagger-in"
               style={{
                 borderRadius: 10,
                 border: `2px solid ${t.border}`,
@@ -199,7 +199,7 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
             {activeIOUs.map((iou, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3"
+                className="flex items-start gap-3 stagger-in"
                 style={{
                   padding: "12px 14px",
                   borderBottom:
@@ -278,7 +278,7 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
             {pastCircles.map((c, i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 shadow-brutal-sm"
+                className="flex items-center gap-3 shadow-brutal-sm stagger-in"
                 style={{
                   borderRadius: 12,
                   border: `2px solid ${t.border}`,

@@ -75,9 +75,14 @@ export function HomeScreen({
               hey maya. 3 active circles.
             </div>
           </div>
-          <div onClick={onProfileTap} className="cursor-pointer">
+          <button
+            type="button"
+            onClick={onProfileTap}
+            aria-label="open profile"
+            className="cursor-pointer bg-transparent border-none p-0"
+          >
             <Avatar name="Maya P" size={44} color={t.primaryBg} />
-          </div>
+          </button>
         </div>
       </div>
 
@@ -85,8 +90,11 @@ export function HomeScreen({
         {circles.map((c, i) => (
           <div
             key={i}
+            role="button"
+            tabIndex={0}
             onClick={() => onCircleTap?.(c.name)}
-            className="cursor-pointer shadow-brutal"
+            onKeyDown={(e) => e.key === "Enter" && onCircleTap?.(c.name)}
+            className="cursor-pointer shadow-brutal stagger-in"
             style={{
               borderRadius: 14,
               border: `2px solid ${t.border}`,

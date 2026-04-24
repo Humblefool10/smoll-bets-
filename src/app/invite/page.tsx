@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
 import { StatusBar } from "@/components/status-bar";
+import { Confetti } from "@/components/confetti";
+import { playStamp, playCelebrate } from "@/lib/sounds";
 
 // ── the pulled-in user's journey ────────────────────────────────────────────
 //
@@ -39,6 +41,14 @@ const circleData = {
 export default function InvitePage() {
   const [step, setStep] = useState<Step>("preview");
   const [email, setEmail] = useState("");
+  const celebratedRef = useRef(false);
+
+  useEffect(() => {
+    if (step === "confirmed" && !celebratedRef.current) {
+      celebratedRef.current = true;
+      playCelebrate();
+    }
+  }, [step]);
 
   return (
     <div className="h-full w-full max-w-[430px] mx-auto relative overflow-hidden">
@@ -228,7 +238,22 @@ export default function InvitePage() {
               will see whether you show up.
             </div>
 
-            <div className="h-24" />
+          </div>
+        )}
+
+        {/* docked "i'm in" button — preview step only */}
+        {step === "preview" && (
+          <div className="px-5 pb-6 pt-3 shrink-0">
+            <BigButton
+              bg={t.primary}
+              onClick={() => {
+                playStamp();
+                setStep("auth");
+              }}
+              className="w-full"
+            >
+              i&apos;m in
+            </BigButton>
           </div>
         )}
 
@@ -397,9 +422,10 @@ export default function InvitePage() {
             then redirect to the circle. */}
         {step === "confirmed" && (
           <div className="flex-1 flex flex-col items-center justify-center px-7 gap-5 text-center">
+            <Confetti count={50} />
             {/* big checkmark — the triumph moment */}
             <div
-              className="flex items-center justify-center shadow-brutal"
+              className="flex items-center justify-center shadow-brutal celebrate-pop"
               style={{
                 width: 96,
                 height: 96,
@@ -409,6 +435,7 @@ export default function InvitePage() {
               }}
             >
               <svg
+                className="check-draw"
                 width="48"
                 height="48"
                 viewBox="0 0 48 48"
@@ -517,7 +544,11 @@ export default function InvitePage() {
             </div>
 
             <BigButton
-              onClick={() => (window.location.href = "/")}
+              onClick={() => {
+                // in production: redirect to authenticated home via router
+                // for prototype: go to home, skip splash/auth
+                window.location.href = "/";
+              }}
               className="w-full"
             >
               go to my circles
@@ -535,20 +566,6 @@ export default function InvitePage() {
           </div>
         )}
 
-        {/* floating "i'm in" button — only on preview step.
-            this is the emotional commitment moment.
-            it sits at the bottom, always visible, impossible to miss. */}
-        {step === "preview" && (
-          <div className="absolute bottom-6 left-5 right-5">
-            <BigButton
-              bg={t.primary}
-              onClick={() => setStep("auth")}
-              className="w-full"
-            >
-              i&apos;m in
-            </BigButton>
-          </div>
-        )}
       </div>
     </div>
   );

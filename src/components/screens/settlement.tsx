@@ -32,7 +32,11 @@ export function SettlementCard() {
   return (
     <div className="w-full">
       <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={visible}
         onClick={() => setVisible(!visible)}
+        onKeyDown={(e) => e.key === "Enter" && setVisible(!visible)}
         className="flex justify-between items-center cursor-pointer shadow-brutal"
         style={{
           borderRadius: 12,

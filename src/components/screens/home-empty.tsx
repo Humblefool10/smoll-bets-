@@ -45,9 +45,14 @@ export function HomeEmptyScreen({
               hey maya. no active circles yet.
             </div>
           </div>
-          <div onClick={onProfileTap} className="cursor-pointer">
+          <button
+            type="button"
+            onClick={onProfileTap}
+            aria-label="open profile"
+            className="cursor-pointer bg-transparent border-none p-0"
+          >
             <Avatar name="Maya P" size={44} color={t.primaryBg} />
-          </div>
+          </button>
         </div>
       </div>
 
@@ -57,7 +62,10 @@ export function HomeEmptyScreen({
             gestalt similarity — previews what the screen will look like.
             closure tension — the brain wants to complete the pattern. */}
         <div
+          role="button"
+          tabIndex={0}
           onClick={onCreateCircle}
+          onKeyDown={(e) => e.key === "Enter" && onCreateCircle()}
           className="cursor-pointer"
           style={{
             borderRadius: 14,
