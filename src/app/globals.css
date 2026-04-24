@@ -1,26 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* warm ember palette */
+  --color-ember-bg: #fff8f2;
+  --color-ember-bg-alt: #fdf0e5;
+  --color-ember-bg-pink: #fff3ea;
+  --color-ember-border: #1a0a00;
+  --color-ember-text: #1a0a00;
+  --color-ember-text-muted: #7a5a3a;
+  --color-ember-primary: #fd8834;
+  --color-ember-primary-light: #ffd0a8;
+  --color-ember-primary-bg: #fff3ea;
+  --color-ember-accent: #c400a2;
+  --color-ember-accent-light: #ffe0f9;
+  --color-ember-positive: #28c76a;
+  --color-ember-positive-bg: #e6fff0;
+  --color-ember-danger: #f34e4e;
+
+  --font-heading: 'Space Grotesk', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #fff8f2;
+  color: #1a0a00;
+  font-family: 'DM Sans', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* neo-brutalist shadow utilities */
+.shadow-brutal {
+  box-shadow: 3px 3px 0px #1a0a00;
+}
+
+.shadow-brutal-sm {
+  box-shadow: 2px 2px 0px #1a0a00;
+}
+
+.shadow-brutal-primary {
+  box-shadow: 3px 3px 0px #fd8834;
+}
+
+/* pressed state for buttons */
+.btn-pressed {
+  box-shadow: 1px 1px 0px #1a0a00;
+  transform: translate(2px, 2px);
+}
+
+/* accessible focus ring */
+*:focus-visible {
+  outline: 2px solid #fd8834;
+  outline-offset: 2px;
+}
+
+/* remove default button styles for our custom buttons */
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+/* reduced motion: disable all animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
