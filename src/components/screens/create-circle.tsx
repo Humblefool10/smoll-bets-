@@ -4,7 +4,7 @@ import { useState } from "react";
 import { t } from "@/lib/tokens";
 import { BigButton } from "@/components/big-button";
 import { Pill } from "@/components/pill";
-import { StatusBar } from "@/components/status-bar";
+
 import { BackButton } from "@/components/back-button";
 
 // ── step indicator ──────────────────────────────────────────────────────────
@@ -247,7 +247,7 @@ function StepTheBet({
 
   return (
     <div className="flex flex-col h-full" style={{ background: t.bg }}>
-      <StatusBar />
+
       <StepHeader
         step={0}
         title="the bet"
@@ -288,14 +288,51 @@ function StepTheBet({
         <ChoiceRow
           label="for how long?"
           options={[
+            { value: "1", label: "1 week" },
             { value: "2", label: "2 weeks" },
+            { value: "3", label: "3 weeks" },
             { value: "4", label: "4 weeks" },
+            { value: "5", label: "5 weeks" },
             { value: "6", label: "6 weeks" },
+            { value: "7", label: "7 weeks" },
             { value: "8", label: "8 weeks" },
           ]}
           value={data.duration}
           onChange={(v) => onUpdate({ duration: v })}
         />
+
+        <ChoiceRow
+          label="how many people?"
+          options={[
+            { value: "2", label: "2" },
+            { value: "3", label: "3" },
+            { value: "4", label: "4" },
+            { value: "5", label: "5" },
+            { value: "6", label: "6" },
+          ]}
+          value={data.maxMembers}
+          onChange={(v) => onUpdate({ maxMembers: v })}
+        />
+
+        {/* timezone awareness */}
+        <div
+          style={{
+            borderRadius: 10,
+            border: `2px solid ${t.border}20`,
+            background: t.bgAlt,
+            padding: "10px 14px",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: t.fontBody,
+              fontSize: 13,
+              color: t.textMuted,
+            }}
+          >
+            🌍 each member&apos;s week runs in their own timezone. no one gets penalized for living somewhere else.
+          </div>
+        </div>
       </div>
 
       <div className="px-5 pb-6 pt-3">
@@ -331,7 +368,7 @@ function StepTheStakes({
 
   return (
     <div className="flex flex-col h-full" style={{ background: t.bg }}>
-      <StatusBar />
+
       <StepHeader
         step={1}
         title="the stakes"
@@ -485,7 +522,7 @@ function StepTheInvite({
 
   return (
     <div className="flex flex-col h-full" style={{ background: t.bg }}>
-      <StatusBar />
+
       <StepHeader
         step={2}
         title="bring your people"
@@ -545,7 +582,7 @@ function StepTheInvite({
             {data.verification === "honor"
               ? "honor system"
               : "photo proof required"}
-            {" · "}up to 6 people
+            {" · "}up to {data.maxMembers} people
           </div>
         </div>
 
@@ -639,6 +676,7 @@ interface CircleData {
   duration: string;
   stakes: string;
   verification: "honor" | "proof";
+  maxMembers: string;
 }
 
 const defaultCircle: CircleData = {
@@ -648,6 +686,7 @@ const defaultCircle: CircleData = {
   duration: "4",
   stakes: "",
   verification: "proof",
+  maxMembers: "4",
 };
 
 // ── main create circle flow ─────────────────────────────────────────────────
@@ -657,12 +696,17 @@ const defaultCircle: CircleData = {
 export function CreateCircleFlow({
   onDone,
   onCancel,
+  initialData,
 }: {
   onDone: (data: CircleData) => void;
   onCancel: () => void;
+  initialData?: Partial<CircleData>;
 }) {
   const [step, setStep] = useState(0);
-  const [data, setData] = useState<CircleData>(defaultCircle);
+  const [data, setData] = useState<CircleData>({
+    ...defaultCircle,
+    ...initialData,
+  });
 
   const update = (partial: Partial<CircleData>) =>
     setData((d) => ({ ...d, ...partial }));

@@ -3,12 +3,14 @@
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { BigButton } from "@/components/big-button";
-import { StatusBar } from "@/components/status-bar";
+
 
 export function HomeEmptyScreen({
+  displayName = "friend",
   onCreateCircle,
   onProfileTap,
 }: {
+  displayName?: string;
   onCreateCircle: () => void;
   onProfileTap?: () => void;
 }) {
@@ -17,7 +19,7 @@ export function HomeEmptyScreen({
       className="flex flex-col h-full"
       style={{ background: t.bg, fontFamily: t.fontBody }}
     >
-      <StatusBar />
+
 
       {/* header — same as populated home for continuity */}
       <div className="px-5 pt-2 pb-4 shrink-0">
@@ -42,7 +44,7 @@ export function HomeEmptyScreen({
                 color: t.textMuted,
               }}
             >
-              hey maya. no active circles yet.
+              hey {displayName.toLowerCase()}. no active circles yet.
             </div>
           </div>
           <button
@@ -51,7 +53,7 @@ export function HomeEmptyScreen({
             aria-label="open profile"
             className="cursor-pointer bg-transparent border-none p-0"
           >
-            <Avatar name="Maya P" size={44} color={t.primaryBg} />
+            <Avatar name={displayName} size={44} color={t.primaryBg} />
           </button>
         </div>
       </div>

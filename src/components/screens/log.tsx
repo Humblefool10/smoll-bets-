@@ -4,21 +4,52 @@ import { useState } from "react";
 import { t } from "@/lib/tokens";
 import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
-import { StatusBar } from "@/components/status-bar";
+
 import { BackButton } from "@/components/back-button";
 import { Confetti } from "@/components/confetti";
 import { playChime } from "@/lib/sounds";
+import { logHabit } from "@/lib/circles";
+import { useCircleDetail } from "@/lib/use-circles";
 
 export function LogScreen({
+  circleId,
   onBack,
 }: {
+  circleId: string | null;
   onBack?: () => void;
 }) {
+  const { circle } = useCircleDetail(circleId);
   const [state, setState] = useState<"idle" | "done">("idle");
+  const [logging, setLogging] = useState(false);
 
-  const handleLog = () => {
-    setState("done");
-    playChime();
+  const circleName = circle?.name ?? "";
+  const target = circle?.target ?? 0;
+
+  // Calculate current week number
+  function getCurrentWeek(): number {
+    if (!circle?.started_at) return 1;
+    const start = new Date(circle.started_at);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(1, diff + 1);
+  }
+
+  const handleLog = async (type: "honor" | "photo") => {
+    if (!circleId || logging) return;
+    setLogging(true);
+    try {
+      await logHabit({
+        circleId,
+        type,
+        weekNumber: getCurrentWeek(),
+      });
+      setState("done");
+      playChime();
+    } catch (err) {
+      console.error("failed to log:", err);
+    } finally {
+      setLogging(false);
+    }
   };
 
   return (
@@ -26,7 +57,7 @@ export function LogScreen({
       className="flex flex-col h-full"
       style={{ background: t.bg }}
     >
-      <StatusBar />
+
 
       {state === "idle" && (
         <>
@@ -41,7 +72,7 @@ export function LogScreen({
                   color: t.text,
                 }}
               >
-                log today&apos;s run
+                log today
               </span>
             </div>
 
@@ -72,12 +103,11 @@ export function LogScreen({
                   color: t.text,
                 }}
               >
-                gym rats · week 2 · tue 22 apr
+                {circleName} · week {getCurrentWeek()}
               </div>
               <div className="flex gap-2 mt-[10px] flex-wrap">
-                <Pill color={t.positiveBg}>priya ✓ logged</Pill>
-                <Pill color={t.bgAlt}>jordan ✓ logged</Pill>
-                <Pill color={t.danger + "22"}>sam 👻</Pill>
+                <Pill color={t.primaryLight}>{circle?.habit ?? ""}</Pill>
+                <Pill color={t.bgAlt}>{target}x target</Pill>
               </div>
             </div>
           </div>
@@ -98,8 +128,8 @@ export function LogScreen({
             <div
               role="button"
               tabIndex={0}
-              onClick={handleLog}
-              onKeyDown={(e) => e.key === "Enter" && handleLog()}
+              onClick={() => handleLog("honor")}
+              onKeyDown={(e) => e.key === "Enter" && handleLog("honor")}
               className="flex gap-[14px] items-center cursor-pointer shadow-brutal"
               style={{
                 borderRadius: 14,
@@ -158,8 +188,8 @@ export function LogScreen({
             <div
               role="button"
               tabIndex={0}
-              onClick={handleLog}
-              onKeyDown={(e) => e.key === "Enter" && handleLog()}
+              onClick={() => handleLog("photo")}
+              onKeyDown={(e) => e.key === "Enter" && handleLog("photo")}
               className="flex gap-[14px] items-center cursor-pointer shadow-brutal"
               style={{
                 borderRadius: 14,
@@ -264,7 +294,7 @@ export function LogScreen({
                 color: t.textMuted,
               }}
             >
-              your circle can see this now. sam is still ghosting.
+              your circle can see this now.
             </div>
           </div>
 
@@ -284,38 +314,7 @@ export function LogScreen({
                 color: t.textMuted,
               }}
             >
-              your progress this week
-            </div>
-            <div className="flex gap-2 mt-2 justify-center">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="flex items-center justify-center"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
-                    border: `2px solid ${t.border}`,
-                    background: n <= 2 ? t.positive : t.bg,
-                    boxShadow:
-                      n <= 2 ? `2px 2px 0 ${t.border}` : "none",
-                  }}
-                >
-                  {n <= 2 && (
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 18 18"
-                      fill="none"
-                      stroke={t.border}
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    >
-                      <path d="M3 9l4 4L15 5" />
-                    </svg>
-                  )}
-                </div>
-              ))}
+              {circleName} · week {getCurrentWeek()}
             </div>
             <div
               className="mt-2"
@@ -326,7 +325,7 @@ export function LogScreen({
                 color: t.text,
               }}
             >
-              2/3 runs this week. one to go.
+              logged successfully.
             </div>
           </div>
 

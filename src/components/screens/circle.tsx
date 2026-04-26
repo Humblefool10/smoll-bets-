@@ -1,44 +1,109 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
-import { StatusBar } from "@/components/status-bar";
+
 import { BackButton } from "@/components/back-button";
-import { SettlementCard } from "@/components/screens/settlement";
-
-const members = [
-  { name: "Priya S", done: 3, target: 3, rank: 1, isMe: false, streak: 7 },
-  { name: "Maya P", done: 2, target: 3, rank: 2, isMe: true, streak: 3 },
-  { name: "Jordan K", done: 2, target: 3, rank: 3, isMe: false, streak: 2 },
-  { name: "Sam T", done: 0, target: 3, rank: 4, isMe: false, streak: 0 },
-];
-
-const feed = [
-  {
-    name: "Priya S",
-    time: "7:12am",
-    note: "Morning 5k done. Legs said no, I said yes.",
-  },
-  { name: "Jordan K", time: "Yesterday", note: "Treadmill counts, right?" },
-];
+import { SkeletonMemberRow, SkeletonFeedItem, LoadingText } from "@/components/loading";
+import { EmptyState } from "@/components/empty-state";
+import { useCircleDetail } from "@/lib/use-circles";
+import { useAuth } from "@/lib/use-auth";
+import { fetchCircleFeed, checkAndSettle } from "@/lib/circles";
+import type { FeedItem } from "@/lib/circles";
 
 const rankEmoji = ["🥇", "🥈", "🥉", "😬"];
 
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 export function CircleScreen({
+  circleId,
   onBack,
   onLog,
+  onCompleted,
+  onLeave,
 }: {
+  circleId: string | null;
   onBack?: () => void;
   onLog?: () => void;
+  onCompleted?: () => void;
+  onLeave?: () => void;
 }) {
+  const { user } = useAuth();
+  const { circle, members: rawMembers, loading } = useCircleDetail(circleId);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [logCounts, setLogCounts] = useState<Record<string, number>>({});
+
+  const circleName = circle?.name ?? "loading...";
+  const stakes = circle?.stakes ?? "";
+
+  // load feed + log counts (separate query for accurate counts)
+  const loadFeed = useCallback(async () => {
+    if (!circleId) return;
+    const [items, { data: allLogs }] = await Promise.all([
+      fetchCircleFeed(circleId),
+      (await import("@/lib/supabase")).supabase
+        .from("logs")
+        .select("user_id")
+        .eq("circle_id", circleId),
+    ]);
+    setFeed(items);
+    const counts: Record<string, number> = {};
+    allLogs?.forEach((l: { user_id: string }) => {
+      counts[l.user_id] = (counts[l.user_id] || 0) + 1;
+    });
+    setLogCounts(counts);
+  }, [circleId]);
+
+  useEffect(() => { loadFeed(); }, [loadFeed]);
+
+  // auto-settle: check if circle has expired
+  useEffect(() => {
+    if (!circleId || !circle || circle.status !== "active") return;
+    checkAndSettle(circleId).then((settlement) => {
+      if (settlement) onCompleted?.();
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [circleId, circle?.status]);
+
+  const members = rawMembers.map((m, i) => ({
+    name: m.display_name,
+    done: logCounts[m.user_id] || 0,
+    target: (circle?.target ?? 1) * (circle?.duration_weeks ?? 1),
+    rank: i + 1,
+    isMe: m.user_id === user?.id,
+    isCreator: m.role === "creator",
+  })).sort((a, b) => b.done - a.done);
+
+  function weeksLeft(): number | null {
+    if (!circle?.started_at) return null;
+    const start = new Date(circle.started_at);
+    const end = new Date(start.getTime() + circle.duration_weeks * 7 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const diff = Math.ceil((end.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    return Math.max(0, diff);
+  }
+
+  const wl = weeksLeft();
+
   return (
     <div
       className="flex flex-col h-full relative"
       style={{ background: t.bg }}
     >
-      <StatusBar />
+
       <div className="px-5 pt-1 pb-3 shrink-0">
         <div className="flex items-center gap-3 mb-[10px]">
           <BackButton onClick={onBack} />
@@ -50,9 +115,33 @@ export function CircleScreen({
               color: t.text,
             }}
           >
-            gym rats
+            {circleName}
           </div>
-          <Pill color={t.primaryLight}>2w left</Pill>
+          <Pill color={t.primaryLight}>{wl !== null ? `${wl}w left` : "active"}</Pill>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={() => setShowLeaveConfirm(true)}
+            aria-label="circle options"
+            className="cursor-pointer"
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: `2px solid ${t.border}`,
+              background: t.bgAlt,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: t.shadowSm,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill={t.text}>
+              <circle cx="7" cy="2.5" r="1.5" />
+              <circle cx="7" cy="7" r="1.5" />
+              <circle cx="7" cy="11.5" r="1.5" />
+            </svg>
+          </button>
         </div>
         <div
           className="shadow-brutal-sm"
@@ -81,13 +170,27 @@ export function CircleScreen({
               fontWeight: 500,
             }}
           >
-            loser cooks dinner for everyone. no takeout disguised as cooking.
+            loser {stakes}.
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-3">
-        {/* last week's settlement — anchors consequences before current progress */}
+        {loading ? (
+          <>
+            <div className="py-4">
+              <LoadingText />
+            </div>
+            {[0, 1, 2, 3].map((i) => (
+              <SkeletonMemberRow key={i} />
+            ))}
+            <div className="mt-2" />
+            {[0, 1].map((i) => (
+              <SkeletonFeedItem key={`f${i}`} />
+            ))}
+          </>
+        ) : (
+        <>
         <div
           style={{
             fontFamily: t.font,
@@ -98,21 +201,7 @@ export function CircleScreen({
             letterSpacing: 0.5,
           }}
         >
-          last week
-        </div>
-        <SettlementCard />
-
-        <div
-          style={{
-            fontFamily: t.font,
-            fontWeight: 700,
-            fontSize: 15,
-            color: t.textMuted,
-            textTransform: "lowercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          this week
+          progress
         </div>
 
         {members.map((m, i) => (
@@ -154,37 +243,40 @@ export function CircleScreen({
               >
                 {m.name}
                 {m.isMe ? " (you)" : ""}
-              </div>
-              <div className="flex gap-[6px] mt-1">
-                {[...Array(m.target)].map((_, j) => (
-                  <div
-                    key={j}
-                    className="flex items-center justify-center"
+                {m.isCreator && (
+                  <span
                     style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      border: `2px solid ${t.border}`,
-                      background: j < m.done ? t.positive : t.bg,
-                      boxShadow:
-                        j < m.done ? `1px 1px 0 ${t.border}` : "none",
+                      fontSize: 10,
+                      color: t.textMuted,
+                      fontWeight: 400,
+                      marginLeft: 4,
                     }}
                   >
-                    {j < m.done && (
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 10 10"
-                        fill="none"
-                        stroke={t.border}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                      >
-                        <path d="M2 5l2.5 2.5L8 3" />
-                      </svg>
-                    )}
-                  </div>
-                ))}
+                    creator
+                  </span>
+                )}
+              </div>
+              {/* progress bar */}
+              <div className="mt-1" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div
+                  style={{
+                    flex: 1,
+                    height: 6,
+                    borderRadius: 3,
+                    background: t.border + "22",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${Math.min(100, (m.done / m.target) * 100)}%`,
+                      height: "100%",
+                      borderRadius: 3,
+                      background: m.done >= m.target ? t.positive : t.primary,
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </div>
               </div>
             </div>
             <div className="text-right">
@@ -198,7 +290,7 @@ export function CircleScreen({
               >
                 {m.done}/{m.target}
               </div>
-              {m.streak > 0 && (
+              {m.done === 0 && (
                 <div
                   style={{
                     fontFamily: t.fontBody,
@@ -206,18 +298,7 @@ export function CircleScreen({
                     color: t.textMuted,
                   }}
                 >
-                  {m.streak}d <span className="streak-pulse">🔥</span>
-                </div>
-              )}
-              {m.streak === 0 && (
-                <div
-                  style={{
-                    fontFamily: t.fontBody,
-                    fontSize: 11,
-                    color: t.danger,
-                  }}
-                >
-                  gone quiet
+                  no logs yet
                 </div>
               )}
             </div>
@@ -238,9 +319,11 @@ export function CircleScreen({
           activity feed
         </div>
 
-        {feed.map((f, i) => (
+        {feed.length === 0 ? (
+          <EmptyState type="feed" />
+        ) : feed.map((f) => (
           <div
-            key={i}
+            key={f.id}
             className="flex gap-[10px] items-start shadow-brutal-sm stagger-in"
             style={{
               borderRadius: 12,
@@ -249,7 +332,7 @@ export function CircleScreen({
               padding: "12px 14px",
             }}
           >
-            <Avatar name={f.name} size={34} />
+            <Avatar name={f.display_name} size={34} />
             <div>
               <div
                 style={{
@@ -259,7 +342,7 @@ export function CircleScreen({
                   color: t.text,
                 }}
               >
-                {f.name}{" "}
+                {f.display_name}{" "}
                 <span
                   style={{
                     fontWeight: 400,
@@ -267,9 +350,10 @@ export function CircleScreen({
                     fontSize: 12,
                   }}
                 >
-                  {f.time}
+                  {timeAgo(f.logged_at)}
                 </span>
               </div>
+              {f.note && (
               <div
                 className="mt-[3px]"
                 style={{
@@ -280,21 +364,87 @@ export function CircleScreen({
               >
                 {f.note}
               </div>
+              )}
               <div className="mt-[6px]">
-                <Pill color={t.positiveBg}>✓ logged</Pill>
+                <Pill color={t.positiveBg}>✓ {f.type === "photo" ? "photo proof" : "honor log"}</Pill>
               </div>
             </div>
           </div>
         ))}
 
+        </>
+
+        )}
       </div>
 
       {/* docked bottom — same pattern as create-circle, lobby, etc. */}
       <div className="px-5 pb-6 pt-3 shrink-0">
         <BigButton bg={t.positive} onClick={onLog} className="w-full">
-          log my run
+          log today
         </BigButton>
       </div>
+
+      {/* leave confirmation overlay */}
+      {showLeaveConfirm && (
+        <div
+          className="absolute inset-0 flex items-center justify-center z-50"
+          style={{ background: "rgba(26, 10, 0, 0.4)" }}
+        >
+          <div
+            className="shadow-brutal mx-6"
+            style={{
+              borderRadius: 16,
+              border: `2px solid ${t.border}`,
+              background: t.bg,
+              padding: 24,
+              maxWidth: 320,
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: t.font,
+                fontWeight: 700,
+                fontSize: 20,
+                color: t.text,
+                marginBottom: 8,
+              }}
+            >
+              leave the circle?
+            </div>
+            <div
+              style={{
+                fontFamily: t.fontBody,
+                fontSize: 14,
+                color: t.textMuted,
+                lineHeight: 1.5,
+                marginBottom: 20,
+              }}
+            >
+              this counts as a loss. your remaining weeks will be marked as missed and any IOUs will activate. the circle will see you left.
+            </div>
+            <div className="flex flex-col gap-2">
+              <BigButton
+                bg={t.danger}
+                onClick={() => {
+                  setShowLeaveConfirm(false);
+                  onLeave?.();
+                }}
+                className="w-full"
+              >
+                leave, i understand
+              </BigButton>
+              <BigButton
+                bg={t.bgAlt}
+                onClick={() => setShowLeaveConfirm(false)}
+                className="w-full"
+              >
+                stay in the circle
+              </BigButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

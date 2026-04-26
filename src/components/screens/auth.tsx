@@ -6,23 +6,50 @@ import { BigButton } from "@/components/big-button";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function AuthScreen({ onAuth }: { onAuth: () => void }) {
+export function AuthScreen({
+  onAuth,
+  onSignInWithEmail,
+  onSignInWithGoogle,
+}: {
+  onAuth: () => void;
+  onSignInWithEmail: (email: string) => Promise<{ error: Error | null }>;
+  onSignInWithGoogle: () => Promise<{ error: Error | null }>;
+}) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
 
-  const isValidEmail = EMAIL_RE.test(email);
-
-  const handleMagicLink = () => {
-    if (!isValidEmail) {
+  const handleMagicLink = async () => {
+    if (!EMAIL_RE.test(email)) {
       setError("that doesn't look like an email. try again?");
       return;
     }
     setError("");
+    setSending(true);
+
+    const { error: authError } = await onSignInWithEmail(email);
+
+    if (authError) {
+      setError(authError.message);
+      setSending(false);
+      return;
+    }
+
+    setSending(false);
     setSent(true);
-    // in production: call Supabase auth.signInWithOtp({ email })
-    // for now, simulate success after a beat
-    setTimeout(onAuth, 1500);
+    // user will click the magic link in their email,
+    // which redirects back to the app. the auth state
+    // listener in useAuth picks it up and onAuth fires.
+  };
+
+  const handleGoogle = async () => {
+    const { error: authError } = await onSignInWithGoogle();
+    if (authError) {
+      setError(authError.message);
+    }
+    // google auth redirects away from the app entirely.
+    // when it redirects back, useAuth picks up the session.
   };
 
   return (
@@ -30,7 +57,6 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
       className="flex flex-col h-full px-6"
       style={{ background: t.bg }}
     >
-      {/* back */}
       <div className="pt-14 pb-4">
         <div
           style={{
@@ -57,7 +83,6 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
 
       {!sent ? (
         <div className="flex flex-col gap-4 mt-4">
-          {/* email input */}
           <div>
             <label
               htmlFor="auth-email"
@@ -113,9 +138,10 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
             )}
           </div>
 
-          <BigButton onClick={handleMagicLink}>send magic link</BigButton>
+          <BigButton onClick={handleMagicLink} loading={sending}>
+            send magic link
+          </BigButton>
 
-          {/* divider */}
           <div className="flex items-center gap-3 my-2">
             <div className="flex-1 h-[2px]" style={{ background: t.border + "22" }} />
             <span
@@ -130,8 +156,7 @@ export function AuthScreen({ onAuth }: { onAuth: () => void }) {
             <div className="flex-1 h-[2px]" style={{ background: t.border + "22" }} />
           </div>
 
-          {/* google */}
-          <BigButton bg={t.bgAlt} onClick={onAuth}>
+          <BigButton bg={t.bgAlt} onClick={handleGoogle}>
             <span className="flex items-center gap-3">
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path

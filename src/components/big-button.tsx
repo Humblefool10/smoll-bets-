@@ -9,6 +9,7 @@ export function BigButton({
   onClick,
   className = "",
   disabled = false,
+  loading = false,
   ariaLabel,
 }: {
   children: React.ReactNode;
@@ -16,6 +17,7 @@ export function BigButton({
   onClick?: () => void;
   className?: string;
   disabled?: boolean;
+  loading?: boolean;
   ariaLabel?: string;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -23,8 +25,9 @@ export function BigButton({
   return (
     <button
       type="button"
-      disabled={disabled}
+      disabled={disabled || loading}
       aria-label={ariaLabel}
+      aria-busy={loading}
       onPointerDown={() => setPressed(true)}
       onPointerUp={() => setPressed(false)}
       onPointerLeave={() => setPressed(false)}
@@ -46,8 +49,25 @@ export function BigButton({
           fontWeight: 700,
           fontSize: 18,
           color: t.text,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
+        {loading && (
+          <span
+            className="btn-spinner"
+            style={{
+              width: 18,
+              height: 18,
+              border: `2px solid ${t.border}33`,
+              borderTopColor: t.border,
+              borderRadius: "50%",
+              display: "inline-block",
+              flexShrink: 0,
+            }}
+          />
+        )}
         {children}
       </span>
     </button>

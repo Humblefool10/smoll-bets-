@@ -164,6 +164,39 @@ button {
   animation: numberPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
+/* ── button spinner ───────────────────────────────────────────── */
+@keyframes btnSpin {
+  to { transform: rotate(360deg); }
+}
+.btn-spinner {
+  animation: btnSpin 0.6s linear infinite;
+}
+
+/* ── skeleton shimmer ─────────────────────────────────────────── */
+@keyframes skeletonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #fdf0e5 25%,
+    #fff3ea 50%,
+    #fdf0e5 75%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+/* ── logo pulse for full-page loading ─────────────────────────── */
+@keyframes skeletonLogoPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.96); }
+}
+.skeleton-logo-pulse {
+  animation: skeletonLogoPulse 2s ease-in-out infinite;
+}
+
 /* reduced motion: disable all animations */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

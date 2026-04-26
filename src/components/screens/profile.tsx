@@ -1,80 +1,111 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
-import { StatusBar } from "@/components/status-bar";
+import { BigButton } from "@/components/big-button";
+
 import { BackButton } from "@/components/back-button";
+import { SkeletonBar, SkeletonCircle, LoadingText } from "@/components/loading";
+import { EmptyState } from "@/components/empty-state";
+import { useProfile } from "@/lib/use-profile";
+import { fetchProfileStats, fetchBetHistory } from "@/lib/circles";
+import type { ProfileStats, BetHistoryItem } from "@/lib/circles";
 
-// ── the profile is a reputation ledger ─────────────────────────────────────
-//
-// anthropology: in any tribe, your standing is your history of commitments
-// kept and broken. the profile isn't a settings page — it's how the group
-// sees you. past circles = track record. active IOUs = debts the tribe
-// remembers. the numbers tell the story before you say a word.
+function SkeletonProfileContent() {
+  return (
+    <>
+      {/* identity card skeleton */}
+      <div
+        className="flex items-center gap-4"
+        style={{
+          borderRadius: 14,
+          border: `2px solid ${t.border}20`,
+          background: t.bgAlt,
+          padding: 16,
+        }}
+      >
+        <SkeletonCircle size={56} />
+        <div className="flex flex-col gap-2">
+          <SkeletonBar width={120} height={20} />
+          <SkeletonBar width={90} height={13} />
+        </div>
+      </div>
 
-const stats = {
-  circlesCompleted: 4,
-  circlesActive: 3,
-  winRate: 75,
-  currentStreak: 7,
-};
+      {/* stats skeleton */}
+      <div className="grid grid-cols-4 gap-2 mt-4">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="text-center"
+            style={{
+              borderRadius: 10,
+              border: `2px solid ${t.border}20`,
+              background: t.bgAlt,
+              padding: "10px 4px",
+            }}
+          >
+            <SkeletonBar width={30} height={18} />
+            <div className="mt-2">
+              <SkeletonBar width={40} height={11} />
+            </div>
+          </div>
+        ))}
+      </div>
 
-const activeIOUs = [
-  {
-    circle: "gym rats",
-    week: 2,
-    what: "cook dinner for the group",
-    from: "Sam T",
-    direction: "owed to you" as const,
-  },
-  {
-    circle: "book nerds",
-    week: 1,
-    what: "buy everyone coffee",
-    from: "You",
-    direction: "you owe" as const,
-  },
-];
+      {/* IOUs skeleton */}
+      <div className="mt-4">
+        <SkeletonBar width={80} height={15} />
+        <div className="mt-2 flex flex-col gap-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="flex items-center gap-3" style={{ padding: "12px 0" }}>
+              <SkeletonCircle size={32} />
+              <div className="flex-1 flex flex-col gap-2">
+                <SkeletonBar width={140} height={14} />
+                <SkeletonBar width={100} height={12} />
+              </div>
+              <SkeletonBar width={60} height={20} radius={8} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
 
-const pastCircles = [
-  {
-    name: "morning runners",
-    habit: "run 3x per week",
-    duration: "4 weeks",
-    result: "won" as const,
-    members: 4,
-  },
-  {
-    name: "no phone zone",
-    habit: "no phone after 10pm",
-    duration: "2 weeks",
-    result: "lost" as const,
-    members: 3,
-  },
-  {
-    name: "cook more",
-    habit: "cook 4x per week",
-    duration: "3 weeks",
-    result: "won" as const,
-    members: 5,
-  },
-  {
-    name: "read daily",
-    habit: "read 30min per day",
-    duration: "4 weeks",
-    result: "won" as const,
-    members: 2,
-  },
-];
+export function ProfileScreen({
+  onBack,
+  onSignOut,
+}: {
+  onBack?: () => void;
+  onSignOut?: () => void;
+}) {
+  const { profile, loading: profileLoading } = useProfile();
+  const [stats, setStats] = useState<ProfileStats>({ total: 0, active: 0, won: 0, lost: 0 });
+  const [betHistory, setBetHistory] = useState<BetHistoryItem[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const loading = profileLoading || dataLoading;
 
-export function ProfileScreen({ onBack }: { onBack?: () => void }) {
+  useEffect(() => {
+    Promise.all([fetchProfileStats(), fetchBetHistory()]).then(([s, h]) => {
+      setStats(s);
+      setBetHistory(h);
+      setDataLoading(false);
+    });
+  }, []);
+
+  const displayName = profile?.display_name ?? "friend";
+  const joinedDate = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" }).toLowerCase()
+    : "";
+
   return (
     <div
       className="flex flex-col h-full"
       style={{ background: t.bg }}
     >
-      <StatusBar />
+
 
       {/* header */}
       <div className="px-5 pt-2 pb-4 shrink-0">
@@ -92,6 +123,10 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
           </div>
         </div>
 
+        {loading ? (
+          <SkeletonProfileContent />
+        ) : (
+        <>
         {/* identity card */}
         <div
           className="flex items-center gap-4 shadow-brutal"
@@ -102,7 +137,7 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
             padding: 16,
           }}
         >
-          <Avatar name="Maya P" size={56} color={t.primaryLight} />
+          <Avatar name={displayName} size={56} color={t.primaryLight} />
           <div className="flex-1">
             <div
               style={{
@@ -112,8 +147,9 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
                 color: t.text,
               }}
             >
-              maya p
+              {displayName.toLowerCase()}
             </div>
+            {joinedDate && (
             <div
               style={{
                 fontFamily: t.fontBody,
@@ -122,22 +158,31 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
                 marginTop: 2,
               }}
             >
-              joined march 2026
+              joined {joinedDate}
             </div>
+            )}
           </div>
         </div>
+        </>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-4">
+        {loading ? (
+          <div className="py-4">
+            <LoadingText />
+          </div>
+        ) : (
+        <>
         {/* stats row — the reputation at a glance */}
         <div
           className="grid grid-cols-4 gap-2"
         >
           {[
-            { label: "completed", value: stats.circlesCompleted },
-            { label: "active", value: stats.circlesActive },
-            { label: "win rate", value: `${stats.winRate}%` },
-            { label: "streak", value: `${stats.currentStreak}d 🔥` },
+            { label: "total", value: stats.total },
+            { label: "active", value: stats.active },
+            { label: "won", value: stats.won },
+            { label: "lost", value: stats.lost },
           ].map((s, i) => (
             <div
               key={s.label}
@@ -173,7 +218,7 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
           ))}
         </div>
 
-        {/* active IOUs — debts the tribe remembers */}
+        {/* active IOUs — will be populated with settlement data later */}
         <div>
           <div
             className="mb-2"
@@ -186,81 +231,10 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
           >
             active IOUs
           </div>
-
-          <div
-            style={{
-              borderRadius: 14,
-              border: `2px solid ${t.border}`,
-              background: t.bg,
-              boxShadow: t.shadowSm,
-              overflow: "hidden",
-            }}
-          >
-            {activeIOUs.map((iou, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-3 stagger-in"
-                style={{
-                  padding: "12px 14px",
-                  borderBottom:
-                    i < activeIOUs.length - 1
-                      ? `1px solid ${t.border}15`
-                      : "none",
-                }}
-              >
-                <div
-                  className="flex items-center justify-center shrink-0 mt-[2px]"
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 10,
-                    border: `2px solid ${t.border}`,
-                    background:
-                      iou.direction === "you owe"
-                        ? t.danger + "22"
-                        : t.positiveBg,
-                    fontSize: 14,
-                  }}
-                >
-                  {iou.direction === "you owe" ? "💸" : "🤝"}
-                </div>
-                <div className="flex-1">
-                  <div
-                    style={{
-                      fontFamily: t.font,
-                      fontWeight: 700,
-                      fontSize: 14,
-                      color: t.text,
-                    }}
-                  >
-                    {iou.what}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: t.fontBody,
-                      fontSize: 12,
-                      color: t.textMuted,
-                      marginTop: 2,
-                    }}
-                  >
-                    {iou.circle} &middot; week {iou.week}
-                  </div>
-                </div>
-                <Pill
-                  color={
-                    iou.direction === "you owe"
-                      ? t.danger + "22"
-                      : t.positiveBg
-                  }
-                >
-                  {iou.direction}
-                </Pill>
-              </div>
-            ))}
-          </div>
+          <EmptyState type="ious" />
         </div>
 
-        {/* past circles — your track record */}
+        {/* bet history — your track record */}
         <div>
           <div
             className="mb-2"
@@ -271,18 +245,21 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
               color: t.textMuted,
             }}
           >
-            past circles
+            bet history
           </div>
 
+          {betHistory.length === 0 ? (
+            <EmptyState type="pastCircles" />
+          ) : (
           <div className="flex flex-col gap-2">
-            {pastCircles.map((c, i) => (
+            {betHistory.map((b) => (
               <div
-                key={i}
+                key={b.circle_id}
                 className="flex items-center gap-3 shadow-brutal-sm stagger-in"
                 style={{
                   borderRadius: 12,
                   border: `2px solid ${t.border}`,
-                  background: c.result === "won" ? t.positiveBg : t.bgAlt,
+                  background: b.my_result === "won" ? t.positiveBg : t.bgAlt,
                   padding: "12px 14px",
                 }}
               >
@@ -293,11 +270,11 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
                     height: 36,
                     borderRadius: 10,
                     border: `2px solid ${t.border}`,
-                    background: c.result === "won" ? t.positive : t.danger + "33",
+                    background: b.my_result === "won" ? t.positive : t.danger + "33",
                     fontSize: 16,
                   }}
                 >
-                  {c.result === "won" ? "✓" : "✗"}
+                  {b.my_result === "won" ? "✓" : "✗"}
                 </div>
                 <div className="flex-1">
                   <div
@@ -308,7 +285,7 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
                       color: t.text,
                     }}
                   >
-                    {c.name}
+                    {b.circle_name}
                   </div>
                   <div
                     style={{
@@ -318,22 +295,30 @@ export function ProfileScreen({ onBack }: { onBack?: () => void }) {
                       marginTop: 1,
                     }}
                   >
-                    {c.habit} &middot; {c.duration} &middot; {c.members} people
+                    {b.habit} &middot; {b.duration_weeks} weeks &middot; {b.results.length} people
                   </div>
                 </div>
                 <Pill
-                  color={c.result === "won" ? t.positiveBg : t.danger + "22"}
+                  color={b.my_result === "won" ? t.positiveBg : t.danger + "22"}
                 >
-                  {c.result}
+                  {b.my_result}
                 </Pill>
               </div>
             ))}
           </div>
+          )}
         </div>
 
         <div className="h-6" />
+        </>
+        )}
       </div>
 
+      <div className="px-5 pb-6 pt-3 shrink-0">
+        <BigButton bg={t.bgAlt} onClick={onSignOut} className="w-full">
+          sign out
+        </BigButton>
+      </div>
       <div className="h-[env(safe-area-inset-bottom,0px)]" />
     </div>
   );

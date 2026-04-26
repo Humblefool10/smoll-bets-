@@ -5,8 +5,11 @@ import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
-import { StatusBar } from "@/components/status-bar";
+
 import { BackButton } from "@/components/back-button";
+import { SkeletonMemberRow, SkeletonBar, LoadingText } from "@/components/loading";
+import { useCircleDetail } from "@/lib/use-circles";
+import { useAuth } from "@/lib/use-auth";
 
 // ── member slot ─────────────────────────────────────────────────────────────
 // gestalt closure: filled avatars + dashed ghost slots.
@@ -16,10 +19,12 @@ function MemberSlot({
   name,
   joinedAgo,
   isYou,
+  isCreator,
 }: {
   name?: string;
   joinedAgo?: string;
   isYou?: boolean;
+  isCreator?: boolean;
 }) {
   if (!name) {
     // empty slot — dashed border, inviting the eye to complete the pattern
@@ -86,6 +91,18 @@ function MemberSlot({
               (you)
             </span>
           )}
+          {isCreator && (
+            <span
+              style={{
+                fontSize: 10,
+                color: t.textMuted,
+                fontWeight: 400,
+                marginLeft: 4,
+              }}
+            >
+              creator
+            </span>
+          )}
         </div>
         {joinedAgo && (
           <div
@@ -105,85 +122,45 @@ function MemberSlot({
   );
 }
 
-// ── join event ───────────────────────────────────────────────────────────────
-// each join is a mini dopamine hit for the initiator.
-// social proof: seeing others join validates the initiator's choice.
-
-function JoinEvent({ name, time }: { name: string; time: string }) {
-  return (
-    <div
-      className="flex items-center gap-3"
-      style={{
-        borderRadius: 10,
-        border: `2px solid ${t.border}`,
-        background: t.positiveBg,
-        padding: "10px 14px",
-        boxShadow: t.shadowSm,
-      }}
-    >
-      <Avatar name={name} size={28} />
-      <div className="flex-1">
-        <span
-          style={{
-            fontFamily: t.font,
-            fontWeight: 700,
-            fontSize: 13,
-            color: t.text,
-          }}
-        >
-          {name.toLowerCase()} just joined
-        </span>
-      </div>
-      <span
-        style={{
-          fontFamily: t.fontBody,
-          fontSize: 12,
-          color: t.textMuted,
-        }}
-      >
-        {time}
-      </span>
-    </div>
-  );
-}
-
 // ── circle lobby screen ─────────────────────────────────────────────────────
 // the pre-game state. the circle exists, the bet is set,
 // but the tribe is still assembling. this screen should feel
 // like a countdown, not a waiting room.
 
 export function CircleLobbyScreen({
+  circleId,
   onBack,
   onStart,
-  circleName = "gym rats",
-  habit = "run 3x per week",
-  duration = "4",
-  stakes = "cook dinner for the group",
-  verification = "proof" as "honor" | "proof",
 }: {
+  circleId: string | null;
   onBack?: () => void;
   onStart?: () => void;
-  circleName?: string;
-  habit?: string;
-  duration?: string;
-  stakes?: string;
-  verification?: "honor" | "proof";
 }) {
+  const { user } = useAuth();
+  const { circle, members: rawMembers, loading } = useCircleDetail(circleId);
   const [copied, setCopied] = useState(false);
-  const inviteUrl = "smollbets.app/invite/gym-rats-a1b2c3";
 
-  // simulated state — in production this comes from Supabase
-  const members = [
-    { name: "Maya P", joinedAgo: "just now (created the circle)", isYou: true },
-    { name: "Priya S", joinedAgo: "2 minutes ago" },
-  ];
-  const joinEvents = [
-    { name: "Priya S", time: "2m ago" },
-  ];
-  const maxMembers = 6;
+  const circleName = circle?.name ?? "loading...";
+  const habit = circle?.habit ?? "";
+  const duration = circle?.duration_weeks?.toString() ?? "";
+  const stakes = circle?.stakes ?? "";
+  const maxMembers = circle?.max_members ?? 4;
+  const inviteCode = circle?.invite_code ?? "";
+  const inviteUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/invite/${inviteCode}`
+    : `/invite/${inviteCode}`;
+
+  const members = rawMembers.map((m) => ({
+    name: m.display_name,
+    joinedAgo: m.role === "creator" ? "created the circle" : "joined",
+    isYou: m.user_id === user?.id,
+    isCreator: m.role === "creator",
+  }));
+
   const emptySlots = maxMembers - members.length;
   const minToStart = 2;
-  const canStart = members.length >= minToStart;
+  const isCreator = rawMembers.some((m) => m.user_id === user?.id && m.role === "creator");
+  const canStart = members.length >= minToStart && isCreator;
 
   const handleCopy = () => {
     navigator.clipboard?.writeText(inviteUrl).catch(() => {});
@@ -209,7 +186,7 @@ export function CircleLobbyScreen({
 
   return (
     <div className="flex flex-col h-full" style={{ background: t.bg }}>
-      <StatusBar />
+
 
       {/* header */}
       <div className="px-5 pt-2 pb-3 shrink-0">
@@ -266,6 +243,20 @@ export function CircleLobbyScreen({
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-4">
+        {loading ? (
+          <>
+            <div className="py-3">
+              <LoadingText />
+            </div>
+            {[0, 1, 2].map((i) => (
+              <SkeletonMemberRow key={i} />
+            ))}
+            <div className="mt-2">
+              <SkeletonBar width="100%" height={80} radius={14} />
+            </div>
+          </>
+        ) : (
+        <>
         {/* member slots — the incomplete pattern */}
         <div>
           <div className="flex items-center justify-between mb-2">
@@ -314,6 +305,7 @@ export function CircleLobbyScreen({
                   name={m.name}
                   joinedAgo={m.joinedAgo}
                   isYou={m.isYou}
+                  isCreator={m.isCreator}
                 />
               </div>
             ))}
@@ -346,15 +338,6 @@ export function CircleLobbyScreen({
             )}
           </div>
         </div>
-
-        {/* join events feed — social proof / dopamine */}
-        {joinEvents.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {joinEvents.map((e, i) => (
-              <JoinEvent key={i} name={e.name} time={e.time} />
-            ))}
-          </div>
-        )}
 
         {/* invite section — always prominent, never buried */}
         <div
@@ -448,9 +431,13 @@ export function CircleLobbyScreen({
         >
           {canStart
             ? "you have enough people to start. more can join later."
+            : !isCreator && members.length >= minToStart
+            ? "waiting for the creator to start the challenge."
             : `need at least ${minToStart} people to start the challenge.`}
         </div>
 
+        </>
+        )}
       </div>
 
       <div className="px-5 pb-6 pt-3 shrink-0">
@@ -460,7 +447,9 @@ export function CircleLobbyScreen({
           </BigButton>
         ) : (
           <BigButton bg={t.bgAlt} disabled className="w-full">
-            waiting for people to join...
+            {!isCreator && members.length >= minToStart
+              ? "waiting for creator to start..."
+              : "waiting for people to join..."}
           </BigButton>
         )}
       </div>

@@ -3,53 +3,39 @@
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
-import { StatusBar } from "@/components/status-bar";
+import type { CircleWithRole } from "@/lib/use-circles";
 
-const circles = [
-  {
-    name: "gym rats",
-    habit: "Run 3x per week",
-    members: ["Maya", "Priya", "Jordan", "Sam"],
-    weeksLeft: 2,
-    myRank: 2,
-    total: 4,
-    color: t.primaryLight,
-  },
-  {
-    name: "book nerds",
-    habit: "Read 20 pages/day",
-    members: ["Alex", "Riley"],
-    weeksLeft: 3,
-    myRank: 1,
-    total: 2,
-    color: t.accentLight,
-  },
-  {
-    name: "no scroll club",
-    habit: "No social media after 9pm",
-    members: ["Dana", "Chris", "Lee"],
-    weeksLeft: 1,
-    myRank: 3,
-    total: 3,
-    color: t.positiveBg,
-  },
-];
+const CARD_COLORS = [t.primaryLight, t.accentLight, t.positiveBg];
+
+function weeksLeft(circle: CircleWithRole): number | null {
+  if (!circle.started_at) return null;
+  const start = new Date(circle.started_at);
+  const end = new Date(start.getTime() + circle.duration_weeks * 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const diff = Math.ceil((end.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return Math.max(0, diff);
+}
 
 export function HomeScreen({
+  displayName = "friend",
+  circles,
   onCircleTap,
   onProfileTap,
   onCreateCircle,
 }: {
-  onCircleTap?: (name: string) => void;
+  displayName?: string;
+  circles: CircleWithRole[];
+  onCircleTap?: (id: string) => void;
   onProfileTap?: () => void;
   onCreateCircle?: () => void;
 }) {
+
   return (
     <div
       className="flex flex-col h-full"
       style={{ background: t.bg, fontFamily: t.fontBody }}
     >
-      <StatusBar />
+
       <div className="px-5 pt-2 pb-4 shrink-0">
         <div className="flex items-center justify-between">
           <div>
@@ -72,7 +58,7 @@ export function HomeScreen({
                 color: t.textMuted,
               }}
             >
-              hey maya. 3 active circles.
+              hey {displayName.toLowerCase()}. {circles.length} active {circles.length === 1 ? "circle" : "circles"}.
             </div>
           </div>
           <button
@@ -81,24 +67,31 @@ export function HomeScreen({
             aria-label="open profile"
             className="cursor-pointer bg-transparent border-none p-0"
           >
-            <Avatar name="Maya P" size={44} color={t.primaryBg} />
+            <Avatar name={displayName} size={44} color={t.primaryBg} />
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-[14px]">
-        {circles.map((c, i) => (
+        {circles.map((c, i) => {
+          const wl = weeksLeft(c);
+          const statusLabel = c.status === "waiting"
+            ? "waiting"
+            : c.status === "completed"
+            ? "done"
+            : wl !== null ? `${wl}w left` : "";
+          return (
           <div
-            key={i}
+            key={c.id}
             role="button"
             tabIndex={0}
-            onClick={() => onCircleTap?.(c.name)}
-            onKeyDown={(e) => e.key === "Enter" && onCircleTap?.(c.name)}
+            onClick={() => onCircleTap?.(c.id)}
+            onKeyDown={(e) => e.key === "Enter" && onCircleTap?.(c.id)}
             className="cursor-pointer shadow-brutal stagger-in"
             style={{
               borderRadius: 14,
               border: `2px solid ${t.border}`,
-              background: c.color,
+              background: CARD_COLORS[i % CARD_COLORS.length],
               padding: 16,
             }}
           >
@@ -125,38 +118,25 @@ export function HomeScreen({
                   {c.habit}
                 </div>
               </div>
-              <Pill color={t.bg}>{c.weeksLeft}w left</Pill>
+              <Pill color={t.bg}>{statusLabel}</Pill>
             </div>
             <div className="flex justify-between items-center">
-              <div className="flex">
-                {c.members.map((m, j) => (
-                  <div
-                    key={j}
-                    style={{
-                      marginLeft: j === 0 ? 0 : -10,
-                      zIndex: c.members.length - j,
-                    }}
-                  >
-                    <Avatar name={m} size={30} />
-                  </div>
-                ))}
+              <div
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 13,
+                  color: t.textMuted,
+                }}
+              >
+                {c.member_count} {c.member_count === 1 ? "member" : "members"}
               </div>
-              <div className="text-right">
-                <div
-                  style={{
-                    fontFamily: t.font,
-                    fontWeight: 700,
-                    fontSize: 15,
-                    color: t.text,
-                  }}
-                >
-                  {c.myRank === 1 ? "🥇" : c.myRank === c.total ? "😬" : "😐"}{" "}
-                  #{c.myRank} of {c.total}
-                </div>
-              </div>
+              {c.role === "creator" && (
+                <Pill color={t.bgAlt}>creator</Pill>
+              )}
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {/* new circle CTA */}
         <div

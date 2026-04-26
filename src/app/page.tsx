@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { SplashScreen } from "@/components/screens/splash";
 import { AuthScreen } from "@/components/screens/auth";
 import { HomeEmptyScreen } from "@/components/screens/home-empty";
@@ -10,9 +10,16 @@ import { CircleLobbyScreen } from "@/components/screens/circle-lobby";
 import { CircleScreen } from "@/components/screens/circle";
 import { LogScreen } from "@/components/screens/log";
 import { ProfileScreen } from "@/components/screens/profile";
+import { CircleCompletedScreen } from "@/components/screens/circle-completed";
 import { ScreenTransition } from "@/components/screen-transition";
+import { LoadingScreen } from "@/components/loading";
+import { useAuth } from "@/lib/use-auth";
+import { useMyCircles } from "@/lib/use-circles";
+import { useProfile } from "@/lib/use-profile";
+import { createCircle, startCircle, leaveCircle } from "@/lib/circles";
 
 type Screen =
+  | "loading"
   | "splash"
   | "auth"
   | "home-empty"
@@ -21,9 +28,9 @@ type Screen =
   | "circle-lobby"
   | "circle"
   | "log"
-  | "profile";
+  | "profile"
+  | "circle-completed";
 
-// back navigations — these slide from the left
 const BACK_TRANSITIONS = new Set([
   "circle->home",
   "log->circle",
@@ -32,25 +39,43 @@ const BACK_TRANSITIONS = new Set([
   "circle-lobby->home",
   "create-circle->home",
   "create-circle->home-empty",
+  "circle-completed->home",
 ]);
 
-interface CreatedCircle {
-  name: string;
-  habit: string;
-  target: string;
-  duration: string;
-  stakes: string;
-  verification: "honor" | "proof";
-}
-
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("splash");
+  const { user, loading: authLoading, signInWithEmail, signInWithGoogle } = useAuth();
+  const { profile } = useProfile();
+  const { circles, loading: circlesLoading, refresh: refreshCircles } = useMyCircles();
+  const [screen, setScreen] = useState<Screen>("loading");
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [transitionKey, setTransitionKey] = useState(0);
-  const [hasCircles, setHasCircles] = useState(false);
-  const [createdCircle, setCreatedCircle] = useState<CreatedCircle | null>(
-    null
-  );
+  const [currentCircleId, setCurrentCircleId] = useState<string | null>(null);
+  const [createdCircleData, setCreatedCircleData] = useState<{
+    name: string; habit: string; target: string; duration: string;
+    stakes: string; verification: "honor" | "proof"; maxMembers: string;
+  } | null>(null);
+
+  const [authResolved, setAuthResolved] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || circlesLoading) return;
+
+    if (!authResolved) {
+      if (user) {
+        setScreen(circles.length > 0 ? "home" : "home-empty");
+      } else {
+        setScreen("splash");
+      }
+      setAuthResolved(true);
+      return;
+    }
+
+    if (user && (screen === "auth" || screen === "splash")) {
+      setScreen(circles.length > 0 ? "home" : "home-empty");
+    } else if (!user && screen !== "splash" && screen !== "auth") {
+      setScreen("splash");
+    }
+  }, [authLoading, circlesLoading, user, authResolved, circles.length, screen]);
 
   const go = useCallback(
     (to: Screen) => {
@@ -62,6 +87,16 @@ export default function App() {
     [screen]
   );
 
+  if (screen === "loading") {
+    return (
+      <div className="h-full w-full max-w-[430px] mx-auto relative overflow-hidden">
+        <LoadingScreen />
+      </div>
+    );
+  }
+
+  const displayName = profile?.display_name || "friend";
+
   return (
     <div className="h-full w-full max-w-[430px] mx-auto relative overflow-hidden">
       <ScreenTransition key={transitionKey} direction={direction}>
@@ -70,11 +105,14 @@ export default function App() {
         )}
         {screen === "auth" && (
           <AuthScreen
-            onAuth={() => go(hasCircles ? "home" : "home-empty")}
+            onAuth={() => go(circles.length > 0 ? "home" : "home-empty")}
+            onSignInWithEmail={signInWithEmail}
+            onSignInWithGoogle={signInWithGoogle}
           />
         )}
         {screen === "home-empty" && (
           <HomeEmptyScreen
+            displayName={displayName}
             onCreateCircle={() => go("create-circle")}
             onProfileTap={() => go("profile")}
           />
@@ -82,53 +120,105 @@ export default function App() {
         {screen === "create-circle" && (
           <CreateCircleFlow
             onCancel={() =>
-              go(hasCircles ? "home" : "home-empty")
+              go(circles.length > 0 ? "home" : "home-empty")
             }
-            onDone={(data) => {
-              setCreatedCircle(data);
-              go("circle-lobby");
+            onDone={async (data) => {
+              try {
+                const circle = await createCircle({
+                  name: data.name,
+                  habit: data.habit,
+                  target: parseInt(data.target),
+                  durationWeeks: parseInt(data.duration),
+                  stakes: data.stakes,
+                  verification: data.verification,
+                  maxMembers: parseInt(data.maxMembers),
+                });
+                setCurrentCircleId(circle.id);
+                setCreatedCircleData(data);
+                await refreshCircles();
+                go("circle-lobby");
+              } catch (err: unknown) {
+                const e = err as { message?: string };
+                console.error("failed to create circle:", e.message);
+              }
             }}
+            initialData={createdCircleData ?? undefined}
           />
         )}
         {screen === "circle-lobby" && (
           <CircleLobbyScreen
-            onBack={() => {
-              setHasCircles(true);
-              go("home");
-            }}
-            onStart={() => {
-              setHasCircles(true);
+            circleId={currentCircleId}
+            onBack={() => go("home")}
+            onStart={async () => {
+              if (currentCircleId) {
+                try {
+                  await startCircle(currentCircleId);
+                  await refreshCircles();
+                } catch (err) {
+                  console.error("failed to start circle:", err);
+                }
+              }
               go("circle");
             }}
-            circleName={createdCircle?.name}
-            habit={
-              createdCircle
-                ? `${createdCircle.habit} ${createdCircle.target}x per week`
-                : undefined
-            }
-            duration={createdCircle?.duration}
-            stakes={createdCircle?.stakes}
-            verification={createdCircle?.verification}
           />
         )}
         {screen === "home" && (
           <HomeScreen
-            onCircleTap={() => go("circle")}
+            displayName={displayName}
+            circles={circles}
+            onCircleTap={(id) => {
+              setCurrentCircleId(id);
+              const c = circles.find((c) => c.id === id);
+              if (c?.status === "waiting") {
+                go("circle-lobby");
+              } else {
+                go("circle");
+              }
+            }}
             onProfileTap={() => go("profile")}
             onCreateCircle={() => go("create-circle")}
           />
         )}
         {screen === "circle" && (
           <CircleScreen
+            circleId={currentCircleId}
             onBack={() => go("home")}
             onLog={() => go("log")}
+            onCompleted={() => go("circle-completed")}
+            onLeave={async () => {
+              if (currentCircleId) {
+                try {
+                  await leaveCircle(currentCircleId);
+                  await refreshCircles();
+                } catch (err) {
+                  console.error("failed to leave circle:", err);
+                }
+              }
+              go("home");
+            }}
           />
         )}
         {screen === "log" && (
-          <LogScreen onBack={() => go("circle")} />
+          <LogScreen
+            circleId={currentCircleId}
+            onBack={() => go("circle")}
+          />
+        )}
+        {screen === "circle-completed" && (
+          <CircleCompletedScreen
+            circleId={currentCircleId}
+            onBack={() => go("home")}
+            onRunItBack={() => go("create-circle")}
+          />
         )}
         {screen === "profile" && (
-          <ProfileScreen onBack={() => go("home")} />
+          <ProfileScreen
+            onBack={() => go("home")}
+            onSignOut={async () => {
+              const { supabase } = await import("@/lib/supabase");
+              await supabase.auth.signOut();
+            }}
+          />
         )}
       </ScreenTransition>
     </div>
