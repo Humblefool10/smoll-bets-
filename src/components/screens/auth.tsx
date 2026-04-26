@@ -83,7 +83,7 @@ export function AuthScreen({
 
       {!sent ? (
         <div className="flex flex-col gap-4 mt-4">
-          <BigButton onClick={handleGoogle}>
+          <BigButton bg={t.bgAlt} onClick={handleGoogle}>
             <span className="flex items-center gap-3">
               <svg width="20" height="20" viewBox="0 0 24 24">
                 <path
