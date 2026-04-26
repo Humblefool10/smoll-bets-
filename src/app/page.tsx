@@ -107,7 +107,10 @@ export default function App() {
     <div className="h-full w-full max-w-[430px] mx-auto relative overflow-hidden">
       <ScreenTransition key={transitionKey} direction={direction}>
         {screen === "splash" && (
-          <SplashScreen onContinue={() => go("auth")} />
+          <SplashScreen
+            onContinue={() => go("auth")}
+            onSignIn={() => go("auth")}
+          />
         )}
         {screen === "auth" && (
           <AuthScreen

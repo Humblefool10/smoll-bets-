@@ -247,47 +247,49 @@ export default function InvitePage({
 
         {/* nav header — escape hatch back to home/splash */}
         {step === "preview" && (
-          <button
-            type="button"
-            onClick={() => { window.location.href = "/"; }}
-            aria-label="go to smoll bets home"
-            className="flex items-center gap-2 cursor-pointer shrink-0 px-5 pt-3 pb-1"
-            style={{ background: "transparent", border: "none" }}
-          >
-            <div
-              className="flex items-center justify-center"
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                border: `2px solid ${t.border}`,
-                background: t.primary,
-                boxShadow: t.shadowSm,
-              }}
+          <div className="shrink-0 px-5 pt-6 pb-4">
+            <button
+              type="button"
+              onClick={() => { window.location.href = "/"; }}
+              aria-label="go to smoll bets home"
+              className="flex items-center gap-[10px] cursor-pointer"
+              style={{ background: "transparent", border: "none", padding: 0 }}
             >
+              <div
+                className="flex items-center justify-center"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 9,
+                  border: `2px solid ${t.border}`,
+                  background: t.primary,
+                  boxShadow: t.shadowSm,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: t.font,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    color: t.text,
+                  }}
+                >
+                  sb
+                </span>
+              </div>
               <span
                 style={{
                   fontFamily: t.font,
                   fontWeight: 700,
-                  fontSize: 13,
+                  fontSize: 18,
                   color: t.text,
+                  letterSpacing: -0.3,
                 }}
               >
-                sb
+                smoll bets
               </span>
-            </div>
-            <span
-              style={{
-                fontFamily: t.font,
-                fontWeight: 700,
-                fontSize: 17,
-                color: t.text,
-                letterSpacing: -0.3,
-              }}
-            >
-              smoll bets
-            </span>
-          </button>
+            </button>
+          </div>
         )}
 
         {/* step 1: preview */}

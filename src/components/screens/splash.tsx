@@ -6,7 +6,13 @@ import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
 
-export function SplashScreen({ onContinue }: { onContinue: () => void }) {
+export function SplashScreen({
+  onContinue,
+  onSignIn,
+}: {
+  onContinue: () => void;
+  onSignIn?: () => void;
+}) {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
@@ -182,8 +188,26 @@ export function SplashScreen({ onContinue }: { onContinue: () => void }) {
           <BigButton onClick={onContinue} className="w-full">
             start a circle
           </BigButton>
+          <button
+            type="button"
+            onClick={onSignIn ?? onContinue}
+            className="w-full text-center mt-3 cursor-pointer"
+            style={{
+              background: "transparent",
+              border: "none",
+              fontFamily: t.fontBody,
+              fontSize: 14,
+              color: t.text,
+              fontWeight: 500,
+              textDecoration: "underline",
+              textUnderlineOffset: 3,
+              textDecorationColor: t.textMuted,
+            }}
+          >
+            been here before? sign in
+          </button>
           <div
-            className="text-center mt-2"
+            className="text-center mt-3"
             style={{
               fontFamily: t.fontBody,
               fontSize: 12,
