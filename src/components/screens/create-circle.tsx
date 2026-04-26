@@ -599,7 +599,7 @@ function StepTheInvite({
               {data.habit || "habit"} {data.target}x/week
             </Pill>
             <Pill color={t.bgAlt}>{data.duration} weeks</Pill>
-            <Pill color={t.danger + "22"}>
+            <Pill color={t.danger + "22"} wrap>
               loser {data.stakes || "..."}
             </Pill>
           </div>

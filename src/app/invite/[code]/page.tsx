@@ -245,6 +245,51 @@ export default function InvitePage({
     <div className="h-full w-full max-w-[430px] mx-auto relative overflow-hidden">
       <div className="flex flex-col h-full" style={{ background: t.bg }}>
 
+        {/* nav header — escape hatch back to home/splash */}
+        {step === "preview" && (
+          <button
+            type="button"
+            onClick={() => { window.location.href = "/"; }}
+            aria-label="go to smoll bets home"
+            className="flex items-center gap-2 cursor-pointer shrink-0 px-5 pt-3 pb-1"
+            style={{ background: "transparent", border: "none" }}
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 8,
+                border: `2px solid ${t.border}`,
+                background: t.primary,
+                boxShadow: t.shadowSm,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: t.font,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  color: t.text,
+                }}
+              >
+                sb
+              </span>
+            </div>
+            <span
+              style={{
+                fontFamily: t.font,
+                fontWeight: 700,
+                fontSize: 17,
+                color: t.text,
+                letterSpacing: -0.3,
+              }}
+            >
+              smoll bets
+            </span>
+          </button>
+        )}
+
         {/* step 1: preview */}
         {step === "preview" && (
           <div className="flex-1 overflow-y-auto px-5 pt-2 flex flex-col gap-4">
