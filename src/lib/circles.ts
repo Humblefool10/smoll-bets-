@@ -88,6 +88,46 @@ export async function fetchCircleByInvite(inviteCode: string) {
   };
 }
 
+// ── update a circle (creator only, only while waiting) ───────────────────
+
+export async function updateCircle(circleId: string, data: {
+  name: string;
+  habit: string;
+  target: number;
+  durationWeeks: number;
+  stakes: string;
+  verification: "honor" | "proof";
+  maxMembers: number;
+}) {
+  const { error } = await supabase
+    .from("circles")
+    .update({
+      name: data.name,
+      habit: data.habit,
+      target: data.target,
+      duration_weeks: data.durationWeeks,
+      stakes: data.stakes,
+      verification: data.verification,
+      max_members: data.maxMembers,
+    })
+    .eq("id", circleId)
+    .eq("status", "waiting");
+
+  if (error) throw error;
+}
+
+// ── delete a circle (creator only) ───────────────────────────────────────
+// cascades to circle_members, logs, settlements via FK constraints.
+
+export async function deleteCircle(circleId: string) {
+  const { error } = await supabase
+    .from("circles")
+    .delete()
+    .eq("id", circleId);
+
+  if (error) throw error;
+}
+
 // ── join a circle ─────────────────────────────────────────────────────────
 
 export async function joinCircle(circleId: string) {

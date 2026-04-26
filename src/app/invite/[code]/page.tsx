@@ -10,6 +10,7 @@ import { Confetti } from "@/components/confetti";
 import { playStamp, playCelebrate } from "@/lib/sounds";
 import { LoadingScreen } from "@/components/loading";
 import { ErrorState } from "@/components/error-state";
+import { Dialog } from "@/components/dialog";
 import { fetchCircleByInvite, joinCircle } from "@/lib/circles";
 import { useAuth } from "@/lib/use-auth";
 import { supabase } from "@/lib/supabase";
@@ -45,6 +46,12 @@ export default function InvitePage({
   const [step, setStep] = useState<Step>("preview");
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [dialog, setDialog] = useState<{
+    title: string;
+    message: string;
+    variant: "success" | "error";
+  } | null>(null);
   const [alreadyMember, setAlreadyMember] = useState(false);
   const celebratedRef = useRef(false);
   const joinedRef = useRef(false);
@@ -163,20 +170,38 @@ export default function InvitePage({
   }
 
   async function handleSendMagicLink() {
-    if (!EMAIL_RE.test(email)) return;
-    // store pending invite so auto-join fires after redirect
+    if (sending) return;
+    if (!EMAIL_RE.test(email.trim())) {
+      setDialog({
+        title: "that email looks off",
+        message: "double check it, then try again.",
+        variant: "error",
+      });
+      return;
+    }
+    setSending(true);
     localStorage.setItem("pendingInvite", code);
-    // redirect back to this invite page after magic link click
     const redirectTo = `${window.location.origin}/invite/${code}`;
     const { error } = await supabase.auth.signInWithOtp({
-      email,
+      email: email.trim(),
       options: { emailRedirectTo: redirectTo },
     });
+    setSending(false);
     if (error) {
       console.error("auth error:", error);
+      setDialog({
+        title: "couldn't send the link",
+        message: error.message || "something broke on our end. try again in a sec.",
+        variant: "error",
+      });
       return;
     }
     setEmailSent(true);
+    setDialog({
+      title: "magic link sent",
+      message: `check ${email.trim()}. tap the link and you're in.`,
+      variant: "success",
+    });
   }
 
   async function handleGoogleSignIn() {
@@ -602,8 +627,8 @@ export default function InvitePage({
                     />
                   </div>
 
-                  <BigButton bg={t.bgAlt} onClick={handleSendMagicLink}>
-                    send magic link
+                  <BigButton bg={t.bgAlt} onClick={handleSendMagicLink} disabled={sending}>
+                    {sending ? "sending..." : "send magic link"}
                   </BigButton>
                 </>
               )}
@@ -756,6 +781,14 @@ export default function InvitePage({
         )}
 
       </div>
+
+      <Dialog
+        open={dialog !== null}
+        onClose={() => setDialog(null)}
+        title={dialog?.title || ""}
+        message={dialog?.message || ""}
+        variant={dialog?.variant || "success"}
+      />
     </div>
   );
 }

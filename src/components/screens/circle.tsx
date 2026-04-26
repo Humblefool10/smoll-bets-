@@ -13,6 +13,7 @@ import { useCircleDetail } from "@/lib/use-circles";
 import { useAuth } from "@/lib/use-auth";
 import { fetchCircleFeed, checkAndSettle } from "@/lib/circles";
 import type { FeedItem } from "@/lib/circles";
+import { supabase } from "@/lib/supabase";
 
 const rankEmoji = ["🥇", "🥈", "🥉", "😬"];
 
@@ -54,10 +55,7 @@ export function CircleScreen({
     if (!circleId) return;
     const [items, { data: allLogs }] = await Promise.all([
       fetchCircleFeed(circleId),
-      (await import("@/lib/supabase")).supabase
-        .from("logs")
-        .select("user_id")
-        .eq("circle_id", circleId),
+      supabase.from("logs").select("user_id").eq("circle_id", circleId),
     ]);
     setFeed(items);
     const counts: Record<string, number> = {};
@@ -68,6 +66,20 @@ export function CircleScreen({
   }, [circleId]);
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
+
+  // realtime: refetch feed + counts when any log in this circle changes
+  useEffect(() => {
+    if (!circleId) return;
+    const channel = supabase
+      .channel(`circle-logs:${circleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "logs", filter: `circle_id=eq.${circleId}` },
+        () => { loadFeed(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [circleId, loadFeed]);
 
   // auto-settle: check if circle has expired
   useEffect(() => {

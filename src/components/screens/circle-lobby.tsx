@@ -8,8 +8,10 @@ import { BigButton } from "@/components/big-button";
 
 import { BackButton } from "@/components/back-button";
 import { SkeletonMemberRow, SkeletonBar, LoadingText } from "@/components/loading";
+import { EditCircleDialog } from "@/components/edit-circle-dialog";
 import { useCircleDetail } from "@/lib/use-circles";
 import { useAuth } from "@/lib/use-auth";
+import { updateCircle, deleteCircle } from "@/lib/circles";
 
 // ── member slot ─────────────────────────────────────────────────────────────
 // gestalt closure: filled avatars + dashed ghost slots.
@@ -131,14 +133,20 @@ export function CircleLobbyScreen({
   circleId,
   onBack,
   onStart,
+  onDelete,
 }: {
   circleId: string | null;
   onBack?: () => void;
   onStart?: () => void;
+  onDelete?: () => void;
 }) {
   const { user } = useAuth();
-  const { circle, members: rawMembers, loading } = useCircleDetail(circleId);
+  const { circle, members: rawMembers, loading, refresh } = useCircleDetail(circleId);
   const [copied, setCopied] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const circleName = circle?.name ?? "loading...";
   const habit = circle?.habit ?? "";
@@ -169,19 +177,21 @@ export function CircleLobbyScreen({
   };
 
   const handleShare = async () => {
+    const shareText = `join ${circleName} on smoll bets. ${habit}, loser ${stakes}. ${inviteUrl}`;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `join "${circleName}" on smoll bets`,
-          text: `${habit}. loser ${stakes}. you in?`,
-          url: inviteUrl,
+          title: `join ${circleName} on smoll bets`,
+          text: shareText,
         });
+        return;
       } catch {
-        handleCopy();
+        // user dismissed or share failed — fall through to copy
       }
-    } else {
-      handleCopy();
     }
+    navigator.clipboard?.writeText(shareText).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -203,6 +213,32 @@ export function CircleLobbyScreen({
             {circleName}
           </div>
           <Pill color={t.primaryLight}>waiting</Pill>
+          <div className="flex-1" />
+          {isCreator && (
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="circle options"
+              className="cursor-pointer"
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                border: `2px solid ${t.border}`,
+                background: t.bgAlt,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: t.shadowSm,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill={t.text}>
+                <circle cx="7" cy="2.5" r="1.5" />
+                <circle cx="7" cy="7" r="1.5" />
+                <circle cx="7" cy="11.5" r="1.5" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* the bet summary card */}
@@ -453,6 +489,144 @@ export function CircleLobbyScreen({
           </BigButton>
         )}
       </div>
+
+      {/* options menu (creator only) */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center"
+          style={{ background: "rgba(26, 10, 0, 0.45)" }}
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className="w-full max-w-[430px] shadow-brutal mb-4 mx-4"
+            style={{
+              borderRadius: 16,
+              border: `2px solid ${t.border}`,
+              background: t.bg,
+              padding: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-2">
+              <BigButton
+                bg={t.bgAlt}
+                onClick={() => { setMenuOpen(false); setEditOpen(true); }}
+                className="w-full"
+              >
+                edit the bet
+              </BigButton>
+              <BigButton
+                bg={t.danger}
+                onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }}
+                className="w-full"
+              >
+                delete circle
+              </BigButton>
+              <BigButton
+                bg={t.bgAlt}
+                onClick={() => setMenuOpen(false)}
+                className="w-full"
+              >
+                cancel
+              </BigButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* edit dialog */}
+      {circle && (
+        <EditCircleDialog
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSave={async (data) => {
+            if (!circleId) return;
+            await updateCircle(circleId, data);
+            await refresh();
+          }}
+          initial={{
+            name: circle.name,
+            habit: circle.habit,
+            target: circle.target,
+            durationWeeks: circle.duration_weeks,
+            stakes: circle.stakes,
+            verification: circle.verification,
+            maxMembers: circle.max_members,
+          }}
+          minMaxMembers={Math.max(2, members.length)}
+        />
+      )}
+
+      {/* delete confirmation */}
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-6"
+          style={{ background: "rgba(26, 10, 0, 0.5)" }}
+        >
+          <div
+            className="shadow-brutal"
+            style={{
+              borderRadius: 16,
+              border: `2px solid ${t.border}`,
+              background: t.bg,
+              padding: 24,
+              maxWidth: 320,
+              width: "100%",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: t.font,
+                fontWeight: 700,
+                fontSize: 20,
+                color: t.text,
+                marginBottom: 8,
+              }}
+            >
+              delete this circle?
+            </div>
+            <div
+              style={{
+                fontFamily: t.fontBody,
+                fontSize: 14,
+                color: t.textMuted,
+                lineHeight: 1.5,
+                marginBottom: 20,
+              }}
+            >
+              everyone who joined gets removed, the invite link stops working, and there's no undo.
+            </div>
+            <div className="flex flex-col gap-2">
+              <BigButton
+                bg={t.danger}
+                loading={deleting}
+                onClick={async () => {
+                  if (!circleId || deleting) return;
+                  setDeleting(true);
+                  try {
+                    await deleteCircle(circleId);
+                    setDeleteConfirm(false);
+                    onDelete?.();
+                  } catch (err) {
+                    console.error("failed to delete:", err);
+                    setDeleting(false);
+                  }
+                }}
+                className="w-full"
+              >
+                delete, i'm sure
+              </BigButton>
+              <BigButton
+                bg={t.bgAlt}
+                onClick={() => setDeleteConfirm(false)}
+                className="w-full"
+              >
+                keep it
+              </BigButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

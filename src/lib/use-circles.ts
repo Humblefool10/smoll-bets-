@@ -139,5 +139,24 @@ export function useCircleDetail(circleId: string | null) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // realtime: refetch when this circle's row or its membership changes
+  useEffect(() => {
+    if (!circleId) return;
+    const channel = supabase
+      .channel(`circle:${circleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "circles", filter: `id=eq.${circleId}` },
+        () => { refresh(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "circle_members", filter: `circle_id=eq.${circleId}` },
+        () => { refresh(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [circleId, refresh]);
+
   return { circle, members, loading, refresh };
 }

@@ -6,6 +6,7 @@ import { BigButton } from "@/components/big-button";
 import { Pill } from "@/components/pill";
 
 import { BackButton } from "@/components/back-button";
+import { createCircle, updateCircle } from "@/lib/circles";
 
 // ── step indicator ──────────────────────────────────────────────────────────
 // gestalt: continuity — the dots show a path, not isolated states.
@@ -358,11 +359,15 @@ function StepTheStakes({
   onUpdate,
   onNext,
   onBack,
+  loading = false,
+  error,
 }: {
   data: CircleData;
   onUpdate: (d: Partial<CircleData>) => void;
   onNext: () => void;
   onBack: () => void;
+  loading?: boolean;
+  error?: string | null;
 }) {
   const canContinue = data.stakes.trim();
 
@@ -467,13 +472,33 @@ function StepTheStakes({
         </div>
       </div>
 
-      <div className="px-5 pb-6 pt-3">
+      <div className="px-5 pb-6 pt-3 flex flex-col gap-2">
+        {error && (
+          <div
+            style={{
+              fontFamily: t.fontBody,
+              fontSize: 13,
+              color: t.danger,
+              background: t.danger + "15",
+              border: `2px solid ${t.border}`,
+              borderRadius: 8,
+              padding: "8px 12px",
+            }}
+          >
+            {error}
+          </div>
+        )}
         <BigButton
-          onClick={canContinue ? onNext : undefined}
+          onClick={canContinue && !loading ? onNext : undefined}
           bg={canContinue ? t.primary : t.bgAlt}
+          loading={loading}
           className="w-full"
         >
-          {canContinue ? "next: invite your people" : "set the stakes first"}
+          {loading
+            ? "setting up your circle..."
+            : canContinue
+            ? "next: invite your people"
+            : "set the stakes first"}
         </BigButton>
       </div>
     </div>
@@ -488,15 +513,19 @@ function StepTheStakes({
 
 function StepTheInvite({
   data,
+  inviteCode,
   onDone,
   onBack,
 }: {
   data: CircleData;
+  inviteCode: string;
   onDone: () => void;
   onBack: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const inviteUrl = "smollbets.app/invite/gym-rats-a1b2c3"; // placeholder
+  const inviteUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/invite/${inviteCode}`
+    : `/invite/${inviteCode}`;
 
   const handleCopy = () => {
     navigator.clipboard?.writeText(inviteUrl).catch(() => {});
@@ -505,19 +534,21 @@ function StepTheInvite({
   };
 
   const handleShare = async () => {
+    const shareText = `join ${data.name} on smoll bets. ${data.habit} ${data.target}x per week, loser ${data.stakes}. ${inviteUrl}`;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `join "${data.name}" on smoll bets`,
-          text: `${data.habit} ${data.target}x per week. loser ${data.stakes}. you in?`,
-          url: inviteUrl,
+          title: `join ${data.name} on smoll bets`,
+          text: shareText,
         });
+        return;
       } catch {
-        handleCopy();
+        // dismissed or unsupported, fall through to clipboard
       }
-    } else {
-      handleCopy();
     }
+    navigator.clipboard?.writeText(shareText).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -645,7 +676,6 @@ function StepTheInvite({
           </span>
         </BigButton>
 
-        {/* skip option — don't guilt them, but be honest */}
         <div
           className="text-center"
           style={{
@@ -698,7 +728,7 @@ export function CreateCircleFlow({
   onCancel,
   initialData,
 }: {
-  onDone: (data: CircleData) => void;
+  onDone: (circleId: string) => void;
   onCancel: () => void;
   initialData?: Partial<CircleData>;
 }) {
@@ -707,9 +737,41 @@ export function CreateCircleFlow({
     ...defaultCircle,
     ...initialData,
   });
+  const [created, setCreated] = useState<{ id: string; invite_code: string } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const update = (partial: Partial<CircleData>) =>
     setData((d) => ({ ...d, ...partial }));
+
+  // create on first advance to step 2; update if the user backs out and changes data
+  const advanceToInvite = async () => {
+    if (creating) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const payload = {
+        name: data.name,
+        habit: data.habit,
+        target: parseInt(data.target),
+        durationWeeks: parseInt(data.duration),
+        stakes: data.stakes,
+        verification: data.verification,
+        maxMembers: parseInt(data.maxMembers),
+      };
+      if (created) {
+        await updateCircle(created.id, payload);
+      } else {
+        const circle = await createCircle(payload);
+        setCreated({ id: circle.id, invite_code: circle.invite_code });
+      }
+      setStep(2);
+    } catch (err) {
+      setCreateError((err as { message?: string })?.message || "couldn't set up the circle. try again.");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <>
@@ -725,14 +787,17 @@ export function CreateCircleFlow({
         <StepTheStakes
           data={data}
           onUpdate={update}
-          onNext={() => setStep(2)}
+          onNext={advanceToInvite}
           onBack={() => setStep(0)}
+          loading={creating}
+          error={createError}
         />
       )}
-      {step === 2 && (
+      {step === 2 && created && (
         <StepTheInvite
           data={data}
-          onDone={() => onDone(data)}
+          inviteCode={created.invite_code}
+          onDone={() => onDone(created.id)}
           onBack={() => setStep(1)}
         />
       )}

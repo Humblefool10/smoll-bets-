@@ -16,7 +16,7 @@ import { LoadingScreen } from "@/components/loading";
 import { useAuth } from "@/lib/use-auth";
 import { useMyCircles } from "@/lib/use-circles";
 import { useProfile } from "@/lib/use-profile";
-import { createCircle, startCircle, leaveCircle } from "@/lib/circles";
+import { startCircle, leaveCircle } from "@/lib/circles";
 
 type Screen =
   | "loading"
@@ -50,10 +50,6 @@ export default function App() {
   const [direction, setDirection] = useState<"forward" | "back">("forward");
   const [transitionKey, setTransitionKey] = useState(0);
   const [currentCircleId, setCurrentCircleId] = useState<string | null>(null);
-  const [createdCircleData, setCreatedCircleData] = useState<{
-    name: string; habit: string; target: string; duration: string;
-    stakes: string; verification: "honor" | "proof"; maxMembers: string;
-  } | null>(null);
 
   const [authResolved, setAuthResolved] = useState(false);
 
@@ -132,27 +128,11 @@ export default function App() {
             onCancel={() =>
               go(circles.length > 0 ? "home" : "home-empty")
             }
-            onDone={async (data) => {
-              try {
-                const circle = await createCircle({
-                  name: data.name,
-                  habit: data.habit,
-                  target: parseInt(data.target),
-                  durationWeeks: parseInt(data.duration),
-                  stakes: data.stakes,
-                  verification: data.verification,
-                  maxMembers: parseInt(data.maxMembers),
-                });
-                setCurrentCircleId(circle.id);
-                setCreatedCircleData(data);
-                await refreshCircles();
-                go("circle-lobby");
-              } catch (err: unknown) {
-                const e = err as { message?: string };
-                console.error("failed to create circle:", e.message);
-              }
+            onDone={async (circleId) => {
+              setCurrentCircleId(circleId);
+              await refreshCircles();
+              go("circle-lobby");
             }}
-            initialData={createdCircleData ?? undefined}
           />
         )}
         {screen === "circle-lobby" && (
@@ -169,6 +149,11 @@ export default function App() {
                 }
               }
               go("circle");
+            }}
+            onDelete={async () => {
+              await refreshCircles();
+              setCurrentCircleId(null);
+              go("home");
             }}
           />
         )}
