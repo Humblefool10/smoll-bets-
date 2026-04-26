@@ -57,6 +57,16 @@ export default function App() {
 
   const [authResolved, setAuthResolved] = useState(false);
 
+  // if user lands here with a pending invite, redirect to the invite page
+  useEffect(() => {
+    if (!user || authLoading) return;
+    const pending = localStorage.getItem("pendingInvite");
+    if (pending) {
+      localStorage.removeItem("pendingInvite");
+      window.location.href = `/invite/${pending}`;
+    }
+  }, [user, authLoading]);
+
   useEffect(() => {
     if (authLoading || circlesLoading) return;
 
