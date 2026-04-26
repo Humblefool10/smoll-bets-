@@ -594,7 +594,7 @@ export function CircleLobbyScreen({
                 marginBottom: 20,
               }}
             >
-              everyone who joined gets removed, the invite link stops working, and there's no undo.
+              everyone who joined gets removed, the invite link stops working, and there&apos;s no undo.
             </div>
             <div className="flex flex-col gap-2">
               <BigButton
@@ -614,7 +614,7 @@ export function CircleLobbyScreen({
                 }}
                 className="w-full"
               >
-                delete, i'm sure
+                delete, i&apos;m sure
               </BigButton>
               <BigButton
                 bg={t.bgAlt}
