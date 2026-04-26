@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { t } from "@/lib/tokens";
 import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
@@ -8,7 +8,7 @@ import { BigButton } from "@/components/big-button";
 import { BackButton } from "@/components/back-button";
 import { Confetti } from "@/components/confetti";
 import { playChime } from "@/lib/sounds";
-import { logHabit } from "@/lib/circles";
+import { logHabit, uploadProofPhoto } from "@/lib/circles";
 import { useCircleDetail } from "@/lib/use-circles";
 
 export function LogScreen({
@@ -19,9 +19,12 @@ export function LogScreen({
   onBack?: () => void;
 }) {
   const { circle } = useCircleDetail(circleId);
-  const [state, setState] = useState<"idle" | "done">("idle");
+  const [state, setState] = useState<"idle" | "preview" | "done">("idle");
   const [logging, setLogging] = useState(false);
   const [alreadyLogged, setAlreadyLogged] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const circleName = circle?.name ?? "";
   const target = circle?.target ?? 0;
@@ -39,9 +42,14 @@ export function LogScreen({
     if (!circleId || logging) return;
     setLogging(true);
     try {
+      let photoUrl: string | undefined;
+      if (type === "photo" && photoFile) {
+        photoUrl = await uploadProofPhoto(circleId, photoFile);
+      }
       await logHabit({
         circleId,
         type,
+        photoUrl,
         weekNumber: getCurrentWeek(),
       });
       setState("done");
@@ -50,12 +58,25 @@ export function LogScreen({
       const msg = (err as { message?: string })?.message ?? "";
       if (msg.includes("duplicate") || msg.includes("unique")) {
         setAlreadyLogged(true);
+        setState("idle");
       } else {
         console.error("failed to log:", err);
       }
     } finally {
       setLogging(false);
     }
+  };
+
+  const handlePhotoPick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setState("preview");
   };
 
   return (
@@ -210,12 +231,22 @@ export function LogScreen({
               </div>
             </div>
 
+            {/* hidden file input — camera on mobile, file picker on desktop */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
             {/* photo proof */}
             <div
               role="button"
               tabIndex={0}
-              onClick={() => handleLog("photo")}
-              onKeyDown={(e) => e.key === "Enter" && handleLog("photo")}
+              onClick={handlePhotoPick}
+              onKeyDown={(e) => e.key === "Enter" && handlePhotoPick()}
               className="flex gap-[14px] items-center cursor-pointer shadow-brutal"
               style={{
                 borderRadius: 14,
@@ -272,6 +303,86 @@ export function LogScreen({
             </div>
           </div>
         </>
+      )}
+
+      {state === "preview" && photoPreview && (
+        <div className="flex flex-col h-full">
+          <div className="px-5 pt-2 shrink-0">
+            <div className="flex items-center gap-[10px] mb-4">
+              <BackButton onClick={() => {
+                setPhotoFile(null);
+                setPhotoPreview(null);
+                setState("idle");
+              }} />
+              <span
+                style={{
+                  fontFamily: t.font,
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: t.text,
+                }}
+              >
+                photo proof
+              </span>
+            </div>
+          </div>
+
+          <div className="flex-1 px-5 flex flex-col gap-4 items-center justify-center">
+            <div
+              className="shadow-brutal"
+              style={{
+                borderRadius: 16,
+                border: `2px solid ${t.border}`,
+                overflow: "hidden",
+                maxWidth: 300,
+                width: "100%",
+              }}
+            >
+              <img
+                src={photoPreview}
+                alt="proof preview"
+                style={{
+                  width: "100%",
+                  display: "block",
+                  objectFit: "cover",
+                  maxHeight: 360,
+                }}
+              />
+            </div>
+            <div
+              style={{
+                fontFamily: t.fontBody,
+                fontSize: 13,
+                color: t.textMuted,
+                textAlign: "center",
+              }}
+            >
+              this will be visible to your circle.
+            </div>
+          </div>
+
+          <div className="px-5 pb-6 pt-3 shrink-0 flex flex-col gap-2">
+            <BigButton
+              bg={t.positive}
+              onClick={() => handleLog("photo")}
+              loading={logging}
+              className="w-full"
+            >
+              submit proof
+            </BigButton>
+            <BigButton
+              bg={t.bgAlt}
+              onClick={() => {
+                setPhotoFile(null);
+                setPhotoPreview(null);
+                setState("idle");
+              }}
+              className="w-full"
+            >
+              retake
+            </BigButton>
+          </div>
+        </div>
       )}
 
       {state === "done" && (

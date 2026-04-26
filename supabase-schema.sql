@@ -238,7 +238,7 @@ create policy "settlements: active members can create"
 -- ============================================================
 
 insert into storage.buckets (id, name, public)
-values ('proof-photos', 'proof-photos', false);
+values ('proof-photos', 'proof-photos', true);
 
 -- members can upload photos to their circle's folder
 create policy "proof-photos: members can upload"

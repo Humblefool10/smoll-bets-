@@ -134,6 +134,31 @@ export async function leaveCircle(circleId: string) {
   if (error) throw error;
 }
 
+// ── upload proof photo ────────────────────────────────────────────────────
+
+export async function uploadProofPhoto(circleId: string, file: File): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("not authenticated");
+
+  const ext = file.name.split(".").pop() || "jpg";
+  const path = `${user.id}/${circleId}/${Date.now()}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from("proof-photos")
+    .upload(path, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (error) throw error;
+
+  const { data } = supabase.storage
+    .from("proof-photos")
+    .getPublicUrl(path);
+
+  return data.publicUrl;
+}
+
 // ── log a habit ───────────────────────────────────────────────────────────
 
 export async function logHabit(data: {
