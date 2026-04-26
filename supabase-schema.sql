@@ -84,6 +84,10 @@ create table public.logs (
 -- index for fetching logs by circle + week
 create index logs_circle_week_idx on public.logs(circle_id, week_number);
 
+-- one log per user per circle per day (prevents gaming)
+create unique index logs_one_per_user_per_day
+  on public.logs (circle_id, user_id, (logged_at::date));
+
 -- ── settlements ─────────────────────────────────────────────
 -- weekly settlement results.
 
@@ -217,14 +221,15 @@ create policy "settlements: members can read"
     )
   );
 
--- only circle creator can create settlements
-create policy "settlements: creator can create"
+-- active members can create settlements (first to open expired circle triggers it)
+create policy "settlements: active members can create"
   on public.settlements for insert
   with check (
     exists (
-      select 1 from public.circles
-      where circles.id = settlements.circle_id
-      and circles.created_by = auth.uid()
+      select 1 from public.circle_members
+      where circle_members.circle_id = settlements.circle_id
+      and circle_members.user_id = auth.uid()
+      and circle_members.left_at is null
     )
   );
 

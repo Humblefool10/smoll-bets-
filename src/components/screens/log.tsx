@@ -21,6 +21,7 @@ export function LogScreen({
   const { circle } = useCircleDetail(circleId);
   const [state, setState] = useState<"idle" | "done">("idle");
   const [logging, setLogging] = useState(false);
+  const [alreadyLogged, setAlreadyLogged] = useState(false);
 
   const circleName = circle?.name ?? "";
   const target = circle?.target ?? 0;
@@ -45,8 +46,13 @@ export function LogScreen({
       });
       setState("done");
       playChime();
-    } catch (err) {
-      console.error("failed to log:", err);
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message ?? "";
+      if (msg.includes("duplicate") || msg.includes("unique")) {
+        setAlreadyLogged(true);
+      } else {
+        console.error("failed to log:", err);
+      }
     } finally {
       setLogging(false);
     }
@@ -113,6 +119,26 @@ export function LogScreen({
           </div>
 
           <div className="flex-1 px-5 flex flex-col gap-[14px]">
+            {alreadyLogged && (
+              <div
+                style={{
+                  borderRadius: 10,
+                  border: `2px solid ${t.border}`,
+                  background: t.primaryBg,
+                  padding: "10px 14px",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: t.fontBody,
+                    fontSize: 13,
+                    color: t.text,
+                  }}
+                >
+                  you already logged today. come back tomorrow.
+                </div>
+              </div>
+            )}
             <div
               style={{
                 fontFamily: t.font,

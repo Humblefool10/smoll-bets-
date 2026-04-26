@@ -53,25 +53,39 @@ export async function createCircle(data: {
 // ── fetch a circle by invite code ─────────────────────────────────────────
 
 export async function fetchCircleByInvite(inviteCode: string) {
+  // uses security definer function to bypass RLS (invite pages need public access)
   const { data, error } = await supabase
-    .from("circles")
-    .select(`
-      *,
-      circle_members (
-        user_id,
-        role,
-        joined_at,
-        left_at,
-        profile:profiles (
-          display_name
-        )
-      )
-    `)
-    .eq("invite_code", inviteCode)
-    .single();
+    .rpc("get_circle_by_invite_with_members", { code: inviteCode });
 
-  if (error) return null;
-  return data;
+  if (error || !data || data.length === 0) return null;
+
+  // the function returns one row per member, so group them
+  const first = data[0];
+  const circle_members = data
+    .filter((r: Record<string, unknown>) => r.member_user_id)
+    .map((r: Record<string, unknown>) => ({
+      user_id: r.member_user_id as string,
+      role: r.member_role as string,
+      joined_at: r.member_joined_at as string,
+      left_at: r.member_left_at as string | null,
+      profile: { display_name: r.member_display_name as string },
+    }));
+
+  return {
+    id: first.id,
+    name: first.name,
+    habit: first.habit,
+    target: first.target,
+    duration_weeks: first.duration_weeks,
+    stakes: first.stakes,
+    verification: first.verification,
+    max_members: first.max_members,
+    status: first.status,
+    invite_code: first.invite_code,
+    started_at: first.started_at,
+    created_at: first.created_at,
+    circle_members,
+  };
 }
 
 // ── join a circle ─────────────────────────────────────────────────────────
