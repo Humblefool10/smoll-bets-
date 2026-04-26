@@ -63,35 +63,66 @@ export default function App() {
     }
   }, [user, authLoading]);
 
+  // helper: set screen and replace current history entry (auto-routes, auth shifts)
+  const replaceScreen = useCallback((to: Screen) => {
+    setScreen(to);
+    if (typeof window !== "undefined") {
+      window.history.replaceState({ screen: to }, "");
+    }
+  }, []);
+
   useEffect(() => {
     if (authLoading || circlesLoading) return;
 
     if (!authResolved) {
       if (user) {
-        setScreen(circles.length > 0 ? "home" : "home-empty");
+        replaceScreen(circles.length > 0 ? "home" : "home-empty");
       } else {
-        setScreen("splash");
+        replaceScreen("splash");
       }
       setAuthResolved(true);
       return;
     }
 
     if (user && (screen === "auth" || screen === "splash")) {
-      setScreen(circles.length > 0 ? "home" : "home-empty");
+      replaceScreen(circles.length > 0 ? "home" : "home-empty");
     } else if (!user && screen !== "splash" && screen !== "auth") {
-      setScreen("splash");
+      replaceScreen("splash");
     }
-  }, [authLoading, circlesLoading, user, authResolved, circles.length, screen]);
+  }, [authLoading, circlesLoading, user, authResolved, circles.length, screen, replaceScreen]);
 
   const go = useCallback(
-    (to: Screen) => {
+    (to: Screen, options: { replace?: boolean } = {}) => {
       const key = `${screen}->${to}`;
       setDirection(BACK_TRANSITIONS.has(key) ? "back" : "forward");
       setTransitionKey((k) => k + 1);
       setScreen(to);
+      if (typeof window !== "undefined") {
+        const state = { screen: to };
+        if (options.replace) {
+          window.history.replaceState(state, "");
+        } else {
+          window.history.pushState(state, "");
+        }
+      }
     },
     [screen]
   );
+
+  // browser back / forward → sync screen state from history
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e: PopStateEvent) => {
+      const target = (e.state as { screen?: Screen } | null)?.screen;
+      if (target) {
+        setDirection("back");
+        setTransitionKey((k) => k + 1);
+        setScreen(target);
+      }
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
 
   if (screen === "loading") {
     return (
@@ -114,7 +145,7 @@ export default function App() {
         )}
         {screen === "auth" && (
           <AuthScreen
-            onAuth={() => go(circles.length > 0 ? "home" : "home-empty")}
+            onAuth={() => go(circles.length > 0 ? "home" : "home-empty", { replace: true })}
             onSignInWithEmail={signInWithEmail}
             onSignInWithGoogle={signInWithGoogle}
           />
