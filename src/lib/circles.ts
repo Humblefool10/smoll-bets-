@@ -10,7 +10,7 @@ export async function createCircle(data: {
   target: number;
   durationWeeks: number;
   stakes: string;
-  verification: "honor" | "proof";
+  verification: "honor" | "proof" | "both";
   maxMembers: number;
 }) {
   // get current user
@@ -96,7 +96,7 @@ export async function updateCircle(circleId: string, data: {
   target: number;
   durationWeeks: number;
   stakes: string;
-  verification: "honor" | "proof";
+  verification: "honor" | "proof" | "both";
   maxMembers: number;
 }) {
   const { error } = await supabase
@@ -405,16 +405,17 @@ export interface FeedItem {
   display_name: string;
   type: "honor" | "photo";
   note: string | null;
+  photo_url: string | null;
   logged_at: string;
 }
 
-export async function fetchCircleFeed(circleId: string): Promise<FeedItem[]> {
+export async function fetchCircleFeed(circleId: string, limit = 20): Promise<FeedItem[]> {
   const { data, error } = await supabase
     .from("logs")
-    .select("id, user_id, type, note, logged_at, profile:profiles(display_name)")
+    .select("id, user_id, type, note, photo_url, logged_at, profile:profiles(display_name)")
     .eq("circle_id", circleId)
     .order("logged_at", { ascending: false })
-    .limit(20);
+    .limit(limit);
 
   if (error || !data) return [];
 
@@ -424,8 +425,59 @@ export async function fetchCircleFeed(circleId: string): Promise<FeedItem[]> {
     display_name: (l.profile as { display_name: string })?.display_name || "unknown",
     type: l.type as "honor" | "photo",
     note: l.note as string | null,
+    photo_url: (l.photo_url as string | null) ?? null,
     logged_at: l.logged_at as string,
   }));
+}
+
+// returns the current user's log for today in this circle, or null.
+// uses the same date boundary as the unique index (logged_at::date).
+export async function fetchTodaysLog(circleId: string): Promise<FeedItem | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from("logs")
+    .select("id, user_id, type, note, photo_url, logged_at, profile:profiles(display_name)")
+    .eq("circle_id", circleId)
+    .eq("user_id", user.id)
+    .gte("logged_at", startOfDay.toISOString())
+    .order("logged_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const l = data as Record<string, unknown>;
+  return {
+    id: l.id as string,
+    user_id: l.user_id as string,
+    display_name: (l.profile as { display_name: string })?.display_name || "unknown",
+    type: l.type as "honor" | "photo",
+    note: l.note as string | null,
+    photo_url: (l.photo_url as string | null) ?? null,
+    logged_at: l.logged_at as string,
+  };
+}
+
+// wipes all logs and resets started_at to now. used when the creator changes
+// target / duration_weeks on an active circle — those govern the win threshold,
+// so progress has to restart from zero for everyone.
+export async function resetCircleProgress(circleId: string) {
+  const { error: delErr } = await supabase
+    .from("logs")
+    .delete()
+    .eq("circle_id", circleId);
+  if (delErr) throw delErr;
+
+  const { error: updErr } = await supabase
+    .from("circles")
+    .update({ started_at: new Date().toISOString() })
+    .eq("id", circleId);
+  if (updErr) throw updErr;
 }
 
 // ── profile stats ────────────────────────────────────────────────────────

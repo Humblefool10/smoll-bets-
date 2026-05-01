@@ -9,24 +9,15 @@ import { BigButton } from "@/components/big-button";
 import { BackButton } from "@/components/back-button";
 import { SkeletonMemberRow, SkeletonFeedItem, LoadingText } from "@/components/loading";
 import { EmptyState } from "@/components/empty-state";
+import { FeedCard } from "@/components/feed-card";
+import { EditCircleDialog } from "@/components/edit-circle-dialog";
 import { useCircleDetail } from "@/lib/use-circles";
 import { useAuth } from "@/lib/use-auth";
-import { fetchCircleFeed, checkAndSettle } from "@/lib/circles";
+import { fetchCircleFeed, checkAndSettle, updateCircle, resetCircleProgress } from "@/lib/circles";
 import type { FeedItem } from "@/lib/circles";
 import { supabase } from "@/lib/supabase";
 
 const rankEmoji = ["🥇", "🥈", "🥉", "😬"];
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
 
 export function CircleScreen({
   circleId,
@@ -42,10 +33,17 @@ export function CircleScreen({
   onLeave?: () => void;
 }) {
   const { user } = useAuth();
-  const { circle, members: rawMembers, loading } = useCircleDetail(circleId);
+  const { circle, members: rawMembers, loading, refresh } = useCircleDetail(circleId);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [logCounts, setLogCounts] = useState<Record<string, number>>({});
+
+  const isCreator = !!user && rawMembers.some(
+    (m) => m.user_id === user.id && m.role === "creator",
+  );
+  const canEdit = isCreator && circle?.status === "active";
 
   const circleName = circle?.name ?? "loading...";
   const stakes = circle?.stakes ?? "";
@@ -133,7 +131,7 @@ export function CircleScreen({
           <div className="flex-1" />
           <button
             type="button"
-            onClick={() => setShowLeaveConfirm(true)}
+            onClick={() => setMenuOpen(true)}
             aria-label="circle options"
             className="cursor-pointer"
             style={{
@@ -334,54 +332,7 @@ export function CircleScreen({
         {feed.length === 0 ? (
           <EmptyState type="feed" />
         ) : feed.map((f) => (
-          <div
-            key={f.id}
-            className="flex gap-[10px] items-start shadow-brutal-sm stagger-in"
-            style={{
-              borderRadius: 12,
-              border: `2px solid ${t.border}`,
-              background: t.bgAlt,
-              padding: "12px 14px",
-            }}
-          >
-            <Avatar name={f.display_name} size={34} />
-            <div>
-              <div
-                style={{
-                  fontFamily: t.font,
-                  fontWeight: 700,
-                  fontSize: 14,
-                  color: t.text,
-                }}
-              >
-                {f.display_name}{" "}
-                <span
-                  style={{
-                    fontWeight: 400,
-                    color: t.textMuted,
-                    fontSize: 12,
-                  }}
-                >
-                  {timeAgo(f.logged_at)}
-                </span>
-              </div>
-              {f.note && (
-              <div
-                className="mt-[3px]"
-                style={{
-                  fontFamily: t.fontBody,
-                  fontSize: 13,
-                  color: t.text,
-                }}
-              >
-                {f.note}
-              </div>
-              )}
-              <div className="mt-[6px]">
-                <Pill color={t.positiveBg}>✓ {f.type === "photo" ? "photo proof" : "honor log"}</Pill>
-              </div>
-            </div>
-          </div>
+          <FeedCard key={f.id} item={f} />
         ))}
 
         </>
@@ -395,6 +346,80 @@ export function CircleScreen({
           log today
         </BigButton>
       </div>
+
+      {/* options menu (bottom sheet) */}
+      {menuOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center"
+          style={{ background: "rgba(26, 10, 0, 0.45)" }}
+          onClick={() => setMenuOpen(false)}
+        >
+          <div
+            className="w-full max-w-[430px] shadow-brutal mb-4 mx-4"
+            style={{
+              borderRadius: 16,
+              border: `2px solid ${t.border}`,
+              background: t.bg,
+              padding: 16,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-2">
+              {canEdit && (
+                <BigButton
+                  bg={t.bgAlt}
+                  onClick={() => { setMenuOpen(false); setEditOpen(true); }}
+                  className="w-full"
+                >
+                  edit the bet
+                </BigButton>
+              )}
+              <BigButton
+                bg={t.danger}
+                onClick={() => { setMenuOpen(false); setShowLeaveConfirm(true); }}
+                className="w-full"
+              >
+                leave circle
+              </BigButton>
+              <BigButton
+                bg={t.bgAlt}
+                onClick={() => setMenuOpen(false)}
+                className="w-full"
+              >
+                cancel
+              </BigButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* edit dialog (active circle — danger zone gates target/weeks) */}
+      {circle && (
+        <EditCircleDialog
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          isActive={circle.status === "active"}
+          onSave={async (data, opts) => {
+            if (!circleId) return;
+            if (opts.willReset) {
+              await resetCircleProgress(circleId);
+            }
+            await updateCircle(circleId, data);
+            await refresh();
+            await loadFeed();
+          }}
+          initial={{
+            name: circle.name,
+            habit: circle.habit,
+            target: circle.target,
+            durationWeeks: circle.duration_weeks,
+            stakes: circle.stakes,
+            verification: circle.verification,
+            maxMembers: circle.max_members,
+          }}
+          minMaxMembers={Math.max(2, rawMembers.length)}
+        />
+      )}
 
       {/* leave confirmation overlay */}
       {showLeaveConfirm && (

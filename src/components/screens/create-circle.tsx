@@ -441,8 +441,9 @@ function StepTheStakes({
         <ChoiceRow
           label="how do people prove it?"
           options={[
-            { value: "honor", label: "🤝 honor system" },
-            { value: "proof", label: "📸 photo proof" },
+            { value: "both", label: "🤝📸 either works" },
+            { value: "honor", label: "🤝 honor only" },
+            { value: "proof", label: "📸 photo only" },
           ]}
           value={data.verification}
           onChange={(v) => onUpdate({ verification: v })}
@@ -467,7 +468,9 @@ function StepTheStakes({
           >
             {data.verification === "honor"
               ? "your word is your bond. members self-report with one tap. best for close friends and partners."
-              : "members snap a photo to log. camera only, no gallery uploads. best for groups where friendly skepticism exists."}
+              : data.verification === "proof"
+              ? "members snap a photo to log. camera only, no gallery uploads. best for groups where friendly skepticism exists."
+              : "members pick honor or photo per log — whichever fits the day. flexible default for most circles."}
           </div>
         </div>
       </div>
@@ -612,7 +615,9 @@ function StepTheInvite({
           >
             {data.verification === "honor"
               ? "honor system"
-              : "photo proof required"}
+              : data.verification === "proof"
+              ? "photo proof required"
+              : "honor or photo"}
             {" · "}up to {data.maxMembers} people
           </div>
         </div>
@@ -705,7 +710,7 @@ interface CircleData {
   target: string;
   duration: string;
   stakes: string;
-  verification: "honor" | "proof";
+  verification: "honor" | "proof" | "both";
   maxMembers: string;
 }
 
@@ -715,7 +720,7 @@ const defaultCircle: CircleData = {
   target: "3",
   duration: "4",
   stakes: "",
-  verification: "proof",
+  verification: "both",
   maxMembers: "4",
 };
 

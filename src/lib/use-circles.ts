@@ -10,7 +10,7 @@ export interface Circle {
   target: number;
   duration_weeks: number;
   stakes: string;
-  verification: "honor" | "proof";
+  verification: "honor" | "proof" | "both";
   max_members: number;
   status: "waiting" | "active" | "completed";
   invite_code: string;

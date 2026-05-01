@@ -1,15 +1,19 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { t } from "@/lib/tokens";
 import { Pill } from "@/components/pill";
 import { BigButton } from "@/components/big-button";
 
 import { BackButton } from "@/components/back-button";
 import { Confetti } from "@/components/confetti";
+import { FeedCard } from "@/components/feed-card";
 import { playChime } from "@/lib/sounds";
-import { logHabit, uploadProofPhoto } from "@/lib/circles";
+import { logHabit, uploadProofPhoto, fetchCircleFeed, fetchTodaysLog } from "@/lib/circles";
+import type { FeedItem } from "@/lib/circles";
 import { useCircleDetail } from "@/lib/use-circles";
+
+const CAPTION_MAX = 140;
 
 export function LogScreen({
   circleId,
@@ -19,15 +23,44 @@ export function LogScreen({
   onBack?: () => void;
 }) {
   const { circle } = useCircleDetail(circleId);
-  const [state, setState] = useState<"idle" | "preview" | "done">("idle");
+  const [state, setState] = useState<"checking" | "idle" | "preview" | "done" | "already">("checking");
   const [logging, setLogging] = useState(false);
-  const [alreadyLogged, setAlreadyLogged] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [caption, setCaption] = useState("");
+  const [recentFeed, setRecentFeed] = useState<FeedItem[]>([]);
+  const [existingLog, setExistingLog] = useState<FeedItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // on mount, see if the user has already logged today.
+  // if so, jump straight to the "already" state instead of making them
+  // walk through the form and discover the duplicate at submit time.
+  useEffect(() => {
+    if (!circleId) return;
+    let cancelled = false;
+    (async () => {
+      const [today, recent] = await Promise.all([
+        fetchTodaysLog(circleId),
+        fetchCircleFeed(circleId, 3),
+      ]);
+      if (cancelled) return;
+      if (today) {
+        setExistingLog(today);
+        setRecentFeed(recent);
+        setState("already");
+      } else {
+        setState("idle");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [circleId]);
 
   const circleName = circle?.name ?? "";
   const target = circle?.target ?? 0;
+  // while circle loads, show both methods to avoid a flicker; once loaded,
+  // honor the creator's verification setting.
+  const showHonor = !circle || circle.verification === "honor" || circle.verification === "both";
+  const showPhoto = !circle || circle.verification === "proof" || circle.verification === "both";
 
   // Calculate current week number
   function getCurrentWeek(): number {
@@ -46,19 +79,32 @@ export function LogScreen({
       if (type === "photo" && photoFile) {
         photoUrl = await uploadProofPhoto(circleId, photoFile);
       }
+      const note = caption.trim() || undefined;
       await logHabit({
         circleId,
         type,
         photoUrl,
+        note,
         weekNumber: getCurrentWeek(),
       });
+      // pull the room — the just-submitted log will be at the top.
+      const recent = await fetchCircleFeed(circleId, 3);
+      setRecentFeed(recent);
       setState("done");
       playChime();
     } catch (err: unknown) {
       const msg = (err as { message?: string })?.message ?? "";
       if (msg.includes("duplicate") || msg.includes("unique")) {
-        setAlreadyLogged(true);
-        setState("idle");
+        // race: a log slipped in between mount-check and submit
+        // (other tab, slow network). switch to the same "already" state
+        // the mount check uses, so the user sees a coherent screen.
+        const [today, recent] = await Promise.all([
+          fetchTodaysLog(circleId),
+          fetchCircleFeed(circleId, 3),
+        ]);
+        if (today) setExistingLog(today);
+        setRecentFeed(recent);
+        setState("already");
       } else {
         console.error("failed to log:", err);
       }
@@ -140,26 +186,38 @@ export function LogScreen({
           </div>
 
           <div className="flex-1 px-5 flex flex-col gap-[14px]">
-            {alreadyLogged && (
-              <div
+            {/* caption — optional, the thing you'd say to the group */}
+            <div>
+              <textarea
+                value={caption}
+                onChange={(e) => setCaption(e.target.value.slice(0, CAPTION_MAX))}
+                placeholder="say something? (optional)"
+                rows={2}
+                className="resize-none shadow-brutal-sm"
                 style={{
-                  borderRadius: 10,
+                  fontFamily: t.fontBody,
+                  fontSize: 14,
+                  color: t.text,
+                  background: t.bgAlt,
                   border: `2px solid ${t.border}`,
-                  background: t.primaryBg,
-                  padding: "10px 14px",
+                  borderRadius: 12,
+                  padding: "10px 12px",
+                  width: "100%",
+                  outline: "none",
+                }}
+              />
+              <div
+                className="text-right mt-[2px]"
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 11,
+                  color: t.textMuted,
                 }}
               >
-                <div
-                  style={{
-                    fontFamily: t.fontBody,
-                    fontSize: 13,
-                    color: t.text,
-                  }}
-                >
-                  you already logged today. come back tomorrow.
-                </div>
+                {caption.length}/{CAPTION_MAX}
               </div>
-            )}
+            </div>
+
             <div
               style={{
                 fontFamily: t.font,
@@ -168,10 +226,15 @@ export function LogScreen({
                 color: t.textMuted,
               }}
             >
-              how do you want to prove it?
+              {showHonor && showPhoto
+                ? "how do you want to prove it?"
+                : showHonor
+                ? "log your honor"
+                : "snap your proof"}
             </div>
 
             {/* honor log */}
+            {showHonor && (
             <div
               role="button"
               tabIndex={0}
@@ -230,6 +293,7 @@ export function LogScreen({
                 </div>
               </div>
             </div>
+            )}
 
             {/* hidden file input — camera on mobile, file picker on desktop */}
             <input
@@ -242,6 +306,7 @@ export function LogScreen({
             />
 
             {/* photo proof */}
+            {showPhoto && (
             <div
               role="button"
               tabIndex={0}
@@ -301,6 +366,7 @@ export function LogScreen({
                 </div>
               </div>
             </div>
+            )}
           </div>
         </>
       )}
@@ -385,94 +451,191 @@ export function LogScreen({
         </div>
       )}
 
-      {state === "done" && (
-        <div className="flex-1 flex flex-col items-center justify-center px-7 gap-5 text-center">
-          <Confetti count={35} />
-          <div
-            className="flex items-center justify-center shadow-brutal celebrate-pop"
-            style={{
-              width: 96,
-              height: 96,
-              borderRadius: 28,
-              border: `3px solid ${t.border}`,
-              background: t.positive,
-            }}
-          >
-            <svg
-              className="check-draw"
-              width="48"
-              height="48"
-              viewBox="0 0 48 48"
-              fill="none"
-              stroke={t.border}
-              strokeWidth="3"
-              strokeLinecap="round"
+      {state === "checking" && (
+        <div className="flex-1" />
+      )}
+
+      {state === "already" && (
+        <div className="flex flex-col h-full">
+          <div className="px-5 pt-2 shrink-0">
+            <div className="flex items-center gap-[10px] mb-4">
+              <BackButton onClick={onBack} />
+              <span
+                style={{
+                  fontFamily: t.font,
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: t.text,
+                }}
+              >
+                today
+              </span>
+            </div>
+
+            <div
+              className="shadow-brutal mb-4"
+              style={{
+                borderRadius: 14,
+                border: `2px solid ${t.border}`,
+                background: t.positiveBg,
+                padding: 16,
+              }}
             >
-              <path d="M10 24l10 10L38 14" />
-            </svg>
+              <div
+                style={{
+                  fontFamily: t.font,
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: t.text,
+                  lineHeight: 1.2,
+                }}
+              >
+                ✓ you logged today
+              </div>
+              <div
+                className="mt-1"
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 13,
+                  color: t.textMuted,
+                }}
+              >
+                come back tomorrow to keep the streak going.
+              </div>
+            </div>
           </div>
-          <div>
+
+          <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-3">
+            {existingLog && (
+              <>
+                <div
+                  style={{
+                    fontFamily: t.font,
+                    fontWeight: 700,
+                    fontSize: 14,
+                    color: t.textMuted,
+                    textTransform: "lowercase",
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  your log
+                </div>
+                <FeedCard item={existingLog} />
+              </>
+            )}
+
+            {(() => {
+              const others = recentFeed.filter((f) => f.id !== existingLog?.id);
+              if (others.length === 0) return null;
+              return (
+                <>
+                  <div
+                    className="mt-2"
+                    style={{
+                      fontFamily: t.font,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: t.textMuted,
+                      textTransform: "lowercase",
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    today in {circleName || "your circle"}
+                  </div>
+                  {others.map((f) => <FeedCard key={f.id} item={f} />)}
+                </>
+              );
+            })()}
+          </div>
+
+          <div className="px-5 pb-6 pt-3 shrink-0">
+            <BigButton bg={t.bgAlt} onClick={onBack} className="w-full">
+              back to circle
+            </BigButton>
+          </div>
+        </div>
+      )}
+
+      {state === "done" && (
+        <div className="flex flex-col h-full">
+          <Confetti count={35} />
+          {/* the pop — short and central, not the whole screen */}
+          <div className="px-7 pt-6 pb-4 shrink-0 flex flex-col items-center gap-3 text-center">
+            <div
+              className="flex items-center justify-center shadow-brutal celebrate-pop"
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 22,
+                border: `3px solid ${t.border}`,
+                background: t.positive,
+              }}
+            >
+              <svg
+                className="check-draw"
+                width="36"
+                height="36"
+                viewBox="0 0 48 48"
+                fill="none"
+                stroke={t.border}
+                strokeWidth="3"
+                strokeLinecap="round"
+              >
+                <path d="M10 24l10 10L38 14" />
+              </svg>
+            </div>
             <div
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,
-                fontSize: 28,
+                fontSize: 24,
                 color: t.text,
                 lineHeight: 1.1,
               }}
             >
               logged.
             </div>
-            <div
-              className="mt-2"
-              style={{
-                fontFamily: t.fontBody,
-                fontSize: 16,
-                color: t.textMuted,
-              }}
-            >
-              your circle can see this now.
-            </div>
           </div>
 
-          <div
-            className="w-full shadow-brutal-sm"
-            style={{
-              borderRadius: 14,
-              border: `2px solid ${t.border}`,
-              background: t.primaryBg,
-              padding: "14px 20px",
-            }}
-          >
+          {/* the room — what everyone else has been up to today */}
+          <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-3">
             <div
-              style={{
-                fontFamily: t.fontBody,
-                fontSize: 14,
-                color: t.textMuted,
-              }}
-            >
-              {circleName} · week {getCurrentWeek()}
-            </div>
-            <div
-              className="mt-2"
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,
                 fontSize: 14,
-                color: t.text,
+                color: t.textMuted,
+                textTransform: "lowercase",
+                letterSpacing: 0.5,
               }}
             >
-              logged successfully.
+              today in {circleName || "your circle"}
             </div>
+            {recentFeed.length === 0 ? (
+              <div
+                className="shadow-brutal-sm"
+                style={{
+                  borderRadius: 12,
+                  border: `2px solid ${t.border}`,
+                  background: t.bgAlt,
+                  padding: "14px 16px",
+                  fontFamily: t.fontBody,
+                  fontSize: 14,
+                  color: t.textMuted,
+                }}
+              >
+                you&apos;re first today. the room fills up as others log.
+              </div>
+            ) : (
+              recentFeed.map((f) => <FeedCard key={f.id} item={f} />)
+            )}
           </div>
 
-          <BigButton
-            bg={t.bgAlt}
-            onClick={onBack}
-            className="w-full"
-          >
-            back to circle
-          </BigButton>
+          <div className="px-5 pb-6 pt-3 shrink-0">
+            <BigButton bg={t.bgAlt} onClick={onBack} className="w-full">
+              back to circle
+            </BigButton>
+          </div>
         </div>
       )}
     </div>
