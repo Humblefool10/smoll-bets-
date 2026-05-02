@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
@@ -87,23 +88,22 @@ export function FeedCard({ item }: { item: FeedItem }) {
         )}
         {item.photo_url && (
           <div
-            className="mt-[8px] shadow-brutal-sm"
+            className="mt-[8px] shadow-brutal-sm relative"
             style={{
               borderRadius: 10,
               border: `2px solid ${t.border}`,
               overflow: "hidden",
+              width: "100%",
               maxWidth: 280,
+              aspectRatio: "5 / 4",
             }}
           >
-            <img
+            <Image
               src={item.photo_url}
               alt="proof"
-              style={{
-                width: "100%",
-                display: "block",
-                objectFit: "cover",
-                maxHeight: 220,
-              }}
+              fill
+              sizes="280px"
+              style={{ objectFit: "cover" }}
             />
           </div>
         )}

@@ -439,6 +439,8 @@ export function LogScreen({
                 width: "100%",
               }}
             >
+              {/* blob: URL from URL.createObjectURL — next/image can't optimize blob sources */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoPreview}
                 alt="proof preview"
