@@ -17,6 +17,7 @@ import { fetchCircleFeed, checkAndSettle, updateCircle, resetCircleProgress } fr
 import type { FeedItem } from "@/lib/circles";
 import { currentRitualBeat } from "@/lib/beats";
 import { supabase } from "@/lib/supabase";
+import { useModalA11y } from "@/lib/use-modal-a11y";
 
 const rankEmoji = ["🥇", "🥈", "🥉", "😬"];
 const PAGE_SIZE = 20;
@@ -48,6 +49,11 @@ export function CircleScreen({
     (m) => m.user_id === user.id && m.role === "creator",
   );
   const canEdit = isCreator && circle?.status === "active";
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeLeaveConfirm = useCallback(() => setShowLeaveConfirm(false), []);
+  const menuRef = useModalA11y(menuOpen, closeMenu);
+  const leaveRef = useModalA11y(showLeaveConfirm, closeLeaveConfirm);
 
   const circleName = circle?.name ?? "loading...";
   const stakes = circle?.stakes ?? "";
@@ -451,6 +457,10 @@ export function CircleScreen({
           onClick={() => setMenuOpen(false)}
         >
           <div
+            ref={menuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="circle options"
             className="w-full max-w-[430px] shadow-brutal mb-4 mx-4"
             style={{
               borderRadius: 16,
@@ -522,8 +532,13 @@ export function CircleScreen({
         <div
           className="absolute inset-0 flex items-center justify-center z-50"
           style={{ background: "rgba(26, 10, 0, 0.4)" }}
+          onClick={closeLeaveConfirm}
         >
           <div
+            ref={leaveRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="leave-confirm-title"
             className="shadow-brutal mx-6"
             style={{
               borderRadius: 16,
@@ -533,8 +548,10 @@ export function CircleScreen({
               maxWidth: 320,
               width: "100%",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div
+              id="leave-confirm-title"
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,

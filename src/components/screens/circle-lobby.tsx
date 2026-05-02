@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
@@ -12,6 +12,7 @@ import { EditCircleDialog } from "@/components/edit-circle-dialog";
 import { useCircleDetail } from "@/lib/use-circles";
 import { useAuth } from "@/lib/use-auth";
 import { updateCircle, deleteCircle } from "@/lib/circles";
+import { useModalA11y } from "@/lib/use-modal-a11y";
 
 // ── member slot ─────────────────────────────────────────────────────────────
 // gestalt closure: filled avatars + dashed ghost slots.
@@ -147,6 +148,11 @@ export function CircleLobbyScreen({
   const [editOpen, setEditOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const closeDelete = useCallback(() => { if (!deleting) setDeleteConfirm(false); }, [deleting]);
+  const menuRef = useModalA11y(menuOpen, closeMenu);
+  const deleteRef = useModalA11y(deleteConfirm, closeDelete);
 
   const circleName = circle?.name ?? "loading...";
   const habit = circle?.habit ?? "";
@@ -498,6 +504,10 @@ export function CircleLobbyScreen({
           onClick={() => setMenuOpen(false)}
         >
           <div
+            ref={menuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="circle options"
             className="w-full max-w-[430px] shadow-brutal mb-4 mx-4"
             style={{
               borderRadius: 16,
@@ -562,8 +572,13 @@ export function CircleLobbyScreen({
         <div
           className="fixed inset-0 z-50 flex items-center justify-center px-6"
           style={{ background: "rgba(26, 10, 0, 0.5)" }}
+          onClick={closeDelete}
         >
           <div
+            ref={deleteRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirm-title"
             className="shadow-brutal"
             style={{
               borderRadius: 16,
@@ -573,8 +588,10 @@ export function CircleLobbyScreen({
               maxWidth: 320,
               width: "100%",
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div
+              id="delete-confirm-title"
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,

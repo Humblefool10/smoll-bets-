@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { t } from "@/lib/tokens";
 import { BigButton } from "@/components/big-button";
+import { useModalA11y } from "@/lib/use-modal-a11y";
 
 interface EditCircleDialogProps {
   open: boolean;
@@ -89,6 +90,14 @@ export function EditCircleDialog({
   const willReset =
     isActive && (target !== initial.target || durationWeeks !== initial.durationWeeks);
 
+  // a11y: trap focus + Escape closes. nested reset-confirm gets its own
+  // hook so Escape on the confirm dismisses the confirm, not the parent.
+  const closeReset = useCallback(() => {
+    if (!saving) setConfirmReset(false);
+  }, [saving]);
+  const dialogRef = useModalA11y(open && !confirmReset, onClose);
+  const resetRef = useModalA11y(confirmReset, closeReset);
+
   if (!open) return null;
 
   const validate = (): string | null => {
@@ -151,6 +160,10 @@ export function EditCircleDialog({
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-circle-title"
         className="w-full max-w-[400px] shadow-brutal max-h-[85vh] overflow-y-auto"
         style={{
           borderRadius: 16,
@@ -161,6 +174,7 @@ export function EditCircleDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div
+          id="edit-circle-title"
           style={{
             fontFamily: t.font,
             fontWeight: 700,
@@ -357,6 +371,10 @@ export function EditCircleDialog({
           onClick={() => !saving && setConfirmReset(false)}
         >
           <div
+            ref={resetRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reset-confirm-title"
             className="w-full max-w-[360px] shadow-brutal"
             style={{
               borderRadius: 16,
@@ -367,6 +385,7 @@ export function EditCircleDialog({
             onClick={(e) => e.stopPropagation()}
           >
             <div
+              id="reset-confirm-title"
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,
