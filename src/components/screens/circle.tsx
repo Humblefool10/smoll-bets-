@@ -19,6 +19,7 @@ import { currentRitualBeat } from "@/lib/beats";
 import { supabase } from "@/lib/supabase";
 
 const rankEmoji = ["🥇", "🥈", "🥉", "😬"];
+const PAGE_SIZE = 20;
 
 export function CircleScreen({
   circleId,
@@ -40,6 +41,8 @@ export function CircleScreen({
   const [editOpen, setEditOpen] = useState(false);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [logCounts, setLogCounts] = useState<Record<string, number>>({});
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const isCreator = !!user && rawMembers.some(
     (m) => m.user_id === user.id && m.role === "creator",
@@ -49,20 +52,49 @@ export function CircleScreen({
   const circleName = circle?.name ?? "loading...";
   const stakes = circle?.stakes ?? "";
 
-  // load feed + log counts (separate query for accurate counts)
+  // load first page of feed + total log counts (separate query for accurate counts).
+  // realtime calls this too — we merge first page over current feed so older pages
+  // the user has loaded don't disappear on every reaction.
   const loadFeed = useCallback(async () => {
     if (!circleId) return;
     const [items, { data: allLogs }] = await Promise.all([
-      fetchCircleFeed(circleId),
+      fetchCircleFeed(circleId, { limit: PAGE_SIZE }),
       supabase.from("logs").select("user_id").eq("circle_id", circleId),
     ]);
-    setFeed(items);
+    setFeed((current) => {
+      const firstIds = new Set(items.map((i) => i.id));
+      const previouslyOlder = current.filter((c) => !firstIds.has(c.id));
+      return [...items, ...previouslyOlder];
+    });
+    setHasMore(items.length === PAGE_SIZE);
     const counts: Record<string, number> = {};
     allLogs?.forEach((l: { user_id: string }) => {
       counts[l.user_id] = (counts[l.user_id] || 0) + 1;
     });
     setLogCounts(counts);
   }, [circleId]);
+
+  // pagination: cursor on the oldest visible logged_at; pulls older items behind it.
+  const loadOlder = async () => {
+    if (!circleId || loadingMore || !hasMore) return;
+    const oldest = feed[feed.length - 1];
+    if (!oldest) return;
+    setLoadingMore(true);
+    try {
+      const older = await fetchCircleFeed(circleId, {
+        before: oldest.logged_at,
+        limit: PAGE_SIZE,
+      });
+      setFeed((current) => {
+        const seen = new Set(current.map((c) => c.id));
+        const fresh = older.filter((o) => !seen.has(o.id));
+        return [...current, ...fresh];
+      });
+      setHasMore(older.length === PAGE_SIZE);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
@@ -370,9 +402,34 @@ export function CircleScreen({
 
         {feed.length === 0 ? (
           <EmptyState type="feed" />
-        ) : [...feed]
-            .sort((a, b) => b.logged_at.localeCompare(a.logged_at))
-            .map((f) => <FeedCard key={f.id} item={f} />)}
+        ) : (
+          <>
+            {[...feed]
+              .sort((a, b) => b.logged_at.localeCompare(a.logged_at))
+              .map((f) => <FeedCard key={f.id} item={f} />)}
+            {hasMore && (
+              <button
+                type="button"
+                onClick={loadOlder}
+                disabled={loadingMore}
+                className="cursor-pointer self-center mb-2"
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: t.textMuted,
+                  background: "transparent",
+                  border: `2px dashed ${t.border}`,
+                  borderRadius: 999,
+                  padding: "6px 14px",
+                  opacity: loadingMore ? 0.6 : 1,
+                }}
+              >
+                {loadingMore ? "loading…" : "load older"}
+              </button>
+            )}
+          </>
+        )}
 
         </>
 

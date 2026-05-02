@@ -467,14 +467,23 @@ async function fetchReactionsForLogs(logIds: string[]): Promise<Map<string, Reac
   return result;
 }
 
-export async function fetchCircleFeed(circleId: string, limit = 20): Promise<FeedItem[]> {
-  const { data, error } = await supabase
+export async function fetchCircleFeed(
+  circleId: string,
+  opts: { before?: string; limit?: number } | number = {},
+): Promise<FeedItem[]> {
+  // back-compat: callers that pass just a number still work.
+  const { before, limit = 20 } =
+    typeof opts === "number" ? { limit: opts, before: undefined } : opts;
+
+  let q = supabase
     .from("logs")
     .select("id, user_id, type, note, photo_url, logged_at, profile:profiles(display_name)")
     .eq("circle_id", circleId)
     .order("logged_at", { ascending: false })
     .limit(limit);
+  if (before) q = q.lt("logged_at", before);
 
+  const { data, error } = await q;
   if (error || !data) return [];
 
   const logIds = data.map((l: Record<string, unknown>) => l.id as string);
