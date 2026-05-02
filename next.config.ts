@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   async headers() {
@@ -33,7 +34,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://*.supabase.co",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.ingest.us.sentry.io",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
@@ -45,4 +46,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // suppress Sentry CLI noise in normal builds
+  silent: !process.env.CI,
+  org: "smoll-bets",
+  project: "smoll-bets",
+  // tunnel through next.js to bypass ad blockers that filter sentry.io
+  tunnelRoute: "/monitoring",
+  // strip the SDK's logger from prod bundles
+  disableLogger: true,
+  // don't try to upload source maps without an auth token (we skipped the wizard)
+  sourcemaps: { disable: true },
+});

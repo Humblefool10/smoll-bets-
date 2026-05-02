@@ -1,8 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { supabase } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+
+// privacy-respecting user context: only the uuid, never email or name.
+// enough to correlate errors to a person we can ask about it; not enough
+// to leak identifying data into the error tracker.
+function tagSentryUser(user: User | null) {
+  Sentry.setUser(user ? { id: user.id } : null);
+}
 
 // ── auth hook ─────────────────────────────────────────────────────────────
 //
@@ -20,14 +28,18 @@ export function useAuth() {
   useEffect(() => {
     // check current session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const u = session?.user ?? null;
+      setUser(u);
+      tagSentryUser(u);
       setLoading(false);
     });
 
     // listen for auth changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setUser(session?.user ?? null);
+        const u = session?.user ?? null;
+        setUser(u);
+        tagSentryUser(u);
       }
     );
 
