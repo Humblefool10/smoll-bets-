@@ -274,7 +274,12 @@ export function LogScreen({
               role="button"
               tabIndex={0}
               onClick={() => handleLog("honor")}
-              onKeyDown={(e) => e.key === "Enter" && handleLog("honor")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleLog("honor");
+                }
+              }}
               className="flex gap-[14px] items-center cursor-pointer shadow-brutal"
               style={{
                 borderRadius: 14,
@@ -337,6 +342,7 @@ export function LogScreen({
               accept="image/*"
               capture="environment"
               onChange={handleFileChange}
+              aria-label="upload proof photo"
               className="hidden"
             />
 
@@ -346,7 +352,12 @@ export function LogScreen({
               role="button"
               tabIndex={0}
               onClick={handlePhotoPick}
-              onKeyDown={(e) => e.key === "Enter" && handlePhotoPick()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handlePhotoPick();
+                }
+              }}
               className="flex gap-[14px] items-center cursor-pointer shadow-brutal"
               style={{
                 borderRadius: 14,

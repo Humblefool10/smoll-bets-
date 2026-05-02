@@ -188,8 +188,9 @@ export function EditCircleDialog({
 
         <div className="flex flex-col gap-3">
           <div>
-            <label style={labelStyle}>name</label>
+            <label htmlFor="edit-name" style={labelStyle}>name</label>
             <input
+              id="edit-name"
               style={inputStyle}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -198,8 +199,9 @@ export function EditCircleDialog({
           </div>
 
           <div>
-            <label style={labelStyle}>habit</label>
+            <label htmlFor="edit-habit" style={labelStyle}>habit</label>
             <input
+              id="edit-habit"
               style={inputStyle}
               value={habit}
               onChange={(e) => setHabit(e.target.value)}
@@ -208,8 +210,9 @@ export function EditCircleDialog({
           </div>
 
           <div>
-            <label style={labelStyle}>max people</label>
+            <label htmlFor="edit-max" style={labelStyle}>max people</label>
             <input
+              id="edit-max"
               type="number"
               min={minMaxMembers}
               style={inputStyle}
@@ -221,8 +224,9 @@ export function EditCircleDialog({
           {!isActive && (
             <div className="flex gap-3">
               <div className="flex-1">
-                <label style={labelStyle}>target / week</label>
+                <label htmlFor="edit-target" style={labelStyle}>target / week</label>
                 <input
+                  id="edit-target"
                   type="number"
                   min={1}
                   style={inputStyle}
@@ -231,8 +235,9 @@ export function EditCircleDialog({
                 />
               </div>
               <div className="flex-1">
-                <label style={labelStyle}>weeks</label>
+                <label htmlFor="edit-weeks" style={labelStyle}>weeks</label>
                 <input
+                  id="edit-weeks"
                   type="number"
                   min={1}
                   style={inputStyle}
@@ -244,8 +249,9 @@ export function EditCircleDialog({
           )}
 
           <div>
-            <label style={labelStyle}>stakes (loser ___)</label>
+            <label htmlFor="edit-stakes" style={labelStyle}>stakes (loser ___)</label>
             <input
+              id="edit-stakes"
               style={inputStyle}
               value={stakes}
               onChange={(e) => setStakes(e.target.value)}
@@ -254,13 +260,14 @@ export function EditCircleDialog({
           </div>
 
           <div>
-            <label style={labelStyle}>verification</label>
-            <div className="flex gap-2">
+            <span style={labelStyle} id="edit-verification-label">verification</span>
+            <div className="flex gap-2" role="group" aria-labelledby="edit-verification-label">
               {(["both", "honor", "proof"] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
                   onClick={() => setVerification(v)}
+                  aria-pressed={verification === v}
                   className="flex-1 cursor-pointer"
                   style={{
                     fontFamily: t.font,
@@ -314,8 +321,9 @@ export function EditCircleDialog({
               </div>
               <div className="flex gap-3">
                 <div className="flex-1">
-                  <label style={labelStyle}>target / week</label>
+                  <label htmlFor="edit-target" style={labelStyle}>target / week</label>
                   <input
+                    id="edit-target"
                     type="number"
                     min={1}
                     style={inputStyle}
@@ -324,8 +332,9 @@ export function EditCircleDialog({
                   />
                 </div>
                 <div className="flex-1">
-                  <label style={labelStyle}>weeks</label>
+                  <label htmlFor="edit-weeks" style={labelStyle}>weeks</label>
                   <input
+                    id="edit-weeks"
                     type="number"
                     min={1}
                     style={inputStyle}

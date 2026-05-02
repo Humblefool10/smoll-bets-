@@ -73,7 +73,12 @@ export function HomeScreen({
             role="button"
             tabIndex={0}
             onClick={() => onCircleTap?.(c.id)}
-            onKeyDown={(e) => e.key === "Enter" && onCircleTap?.(c.id)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onCircleTap?.(c.id);
+              }
+            }}
             className="cursor-pointer shadow-brutal stagger-in"
             style={{
               borderRadius: 14,
@@ -131,7 +136,12 @@ export function HomeScreen({
           role="button"
           tabIndex={0}
           aria-label="start a new circle"
-          onKeyDown={(e) => e.key === "Enter" && onCreateCircle?.()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onCreateCircle?.();
+            }
+          }}
           className="flex items-center justify-center gap-[10px] cursor-pointer mb-2"
           style={{
             borderRadius: 14,
