@@ -396,6 +396,27 @@ export async function fetchSettlement(circleId: string): Promise<Settlement | nu
   };
 }
 
+// ── reactions ────────────────────────────────────────────────────────────
+// small fixed vocabulary, named not symbolic. holds the
+// competitive-AND-bonding tension: two warm + one spicy.
+// add new types here ALSO update the SQL check constraint.
+
+export const REACTION_TYPES = ["respect", "with_you", "barely"] as const;
+export type ReactionType = (typeof REACTION_TYPES)[number];
+
+// human-facing labels (lowercase per tone guidelines)
+export const REACTION_LABELS: Record<ReactionType, string> = {
+  respect: "respect",
+  with_you: "with you",
+  barely: "barely",
+};
+
+export interface ReactionTally {
+  type: ReactionType;
+  count: number;
+  mine: boolean;
+}
+
 // ── activity feed ────────────────────────────────────────────────────────
 // fetches recent logs for a circle with profile names
 
@@ -407,6 +428,43 @@ export interface FeedItem {
   note: string | null;
   photo_url: string | null;
   logged_at: string;
+  reactions: ReactionTally[];
+}
+
+// rolls reactions rows into a tally array per log_id.
+// always returns one entry per known reaction type so the UI can render
+// the full row of buttons (count 0 means "nobody yet").
+async function fetchReactionsForLogs(logIds: string[]): Promise<Map<string, ReactionTally[]>> {
+  const result = new Map<string, ReactionTally[]>();
+  if (logIds.length === 0) return result;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const myId = user?.id ?? null;
+
+  const { data } = await supabase
+    .from("reactions")
+    .select("log_id, user_id, reaction")
+    .in("log_id", logIds);
+
+  for (const logId of logIds) {
+    result.set(
+      logId,
+      REACTION_TYPES.map((type) => ({ type, count: 0, mine: false })),
+    );
+  }
+
+  if (data) {
+    for (const row of data as { log_id: string; user_id: string; reaction: ReactionType }[]) {
+      const tallies = result.get(row.log_id);
+      if (!tallies) continue;
+      const tally = tallies.find((t) => t.type === row.reaction);
+      if (!tally) continue;
+      tally.count += 1;
+      if (myId && row.user_id === myId) tally.mine = true;
+    }
+  }
+
+  return result;
 }
 
 export async function fetchCircleFeed(circleId: string, limit = 20): Promise<FeedItem[]> {
@@ -419,6 +477,9 @@ export async function fetchCircleFeed(circleId: string, limit = 20): Promise<Fee
 
   if (error || !data) return [];
 
+  const logIds = data.map((l: Record<string, unknown>) => l.id as string);
+  const reactionsByLog = await fetchReactionsForLogs(logIds);
+
   return data.map((l: Record<string, unknown>) => ({
     id: l.id as string,
     user_id: l.user_id as string,
@@ -427,6 +488,7 @@ export async function fetchCircleFeed(circleId: string, limit = 20): Promise<Fee
     note: l.note as string | null,
     photo_url: (l.photo_url as string | null) ?? null,
     logged_at: l.logged_at as string,
+    reactions: reactionsByLog.get(l.id as string) ?? REACTION_TYPES.map((type) => ({ type, count: 0, mine: false })),
   }));
 }
 
@@ -452,15 +514,48 @@ export async function fetchTodaysLog(circleId: string): Promise<FeedItem | null>
   if (error || !data) return null;
 
   const l = data as Record<string, unknown>;
+  const logId = l.id as string;
+  const reactionsByLog = await fetchReactionsForLogs([logId]);
   return {
-    id: l.id as string,
+    id: logId,
     user_id: l.user_id as string,
     display_name: (l.profile as { display_name: string })?.display_name || "unknown",
     type: l.type as "honor" | "photo",
     note: l.note as string | null,
     photo_url: (l.photo_url as string | null) ?? null,
     logged_at: l.logged_at as string,
+    reactions: reactionsByLog.get(logId) ?? REACTION_TYPES.map((type) => ({ type, count: 0, mine: false })),
   };
+}
+
+// ── reaction toggles ────────────────────────────────────────────────────
+
+export async function addReaction(logId: string, reaction: ReactionType) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("not authenticated");
+
+  const { error } = await supabase
+    .from("reactions")
+    .insert({ log_id: logId, user_id: user.id, reaction });
+
+  // duplicate is fine — user double-tapped or a realtime race
+  if (error && !(error.message.includes("duplicate") || error.message.includes("unique"))) {
+    throw error;
+  }
+}
+
+export async function removeReaction(logId: string, reaction: ReactionType) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("not authenticated");
+
+  const { error } = await supabase
+    .from("reactions")
+    .delete()
+    .eq("log_id", logId)
+    .eq("user_id", user.id)
+    .eq("reaction", reaction);
+
+  if (error) throw error;
 }
 
 // wipes all logs and resets started_at to now. used when the creator changes

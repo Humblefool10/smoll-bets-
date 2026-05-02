@@ -12,6 +12,7 @@ import { playChime } from "@/lib/sounds";
 import { logHabit, uploadProofPhoto, fetchCircleFeed, fetchTodaysLog } from "@/lib/circles";
 import type { FeedItem } from "@/lib/circles";
 import { useCircleDetail } from "@/lib/use-circles";
+import { supabase } from "@/lib/supabase";
 
 const CAPTION_MAX = 140;
 
@@ -53,6 +54,40 @@ export function LogScreen({
       }
     })();
     return () => { cancelled = true; };
+  }, [circleId]);
+
+  // realtime: keep "today's room" and the existing-log card fresh as
+  // friends react or log throughout the day. matches the circle screen pattern.
+  useEffect(() => {
+    if (!circleId) return;
+    const channel = supabase
+      .channel(`log-screen:${circleId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "logs", filter: `circle_id=eq.${circleId}` },
+        async () => {
+          const [today, recent] = await Promise.all([
+            fetchTodaysLog(circleId),
+            fetchCircleFeed(circleId, 3),
+          ]);
+          if (today) setExistingLog(today);
+          setRecentFeed(recent);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reactions" },
+        async () => {
+          const [today, recent] = await Promise.all([
+            fetchTodaysLog(circleId),
+            fetchCircleFeed(circleId, 3),
+          ]);
+          if (today) setExistingLog(today);
+          setRecentFeed(recent);
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [circleId]);
 
   const circleName = circle?.name ?? "";

@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
-import type { FeedItem } from "@/lib/circles";
+import type { FeedItem, ReactionTally, ReactionType } from "@/lib/circles";
+import { REACTION_LABELS, addReaction, removeReaction } from "@/lib/circles";
+import { useAuth } from "@/lib/use-auth";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -17,6 +20,27 @@ function timeAgo(dateStr: string): string {
 }
 
 export function FeedCard({ item }: { item: FeedItem }) {
+  const { user } = useAuth();
+  const isOwnLog = user?.id === item.user_id;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pending, setPending] = useState<ReactionType | null>(null);
+
+  const toggle = async (r: ReactionTally) => {
+    if (isOwnLog || pending) return;
+    setPending(r.type);
+    try {
+      if (r.mine) await removeReaction(item.id, r.type);
+      else await addReaction(item.id, r.type);
+    } catch {
+      // realtime will reconcile
+    } finally {
+      setPending(null);
+      setPickerOpen(false);
+    }
+  };
+
+  const visibleChips = item.reactions.filter((r) => r.count > 0);
+
   return (
     <div
       className="flex gap-[10px] items-start shadow-brutal-sm stagger-in"
@@ -88,6 +112,87 @@ export function FeedCard({ item }: { item: FeedItem }) {
             ✓ {item.type === "photo" ? "photo proof" : "honor log"}
           </Pill>
         </div>
+
+        {/* reactions — chips show only when count > 0; the picker is hidden behind a small "+ react" button. on your own log: chips only, no react button. */}
+        {(visibleChips.length > 0 || (!isOwnLog)) && (
+          <div className="flex flex-wrap gap-[6px] mt-[10px] items-center">
+            {visibleChips.map((r) => (
+              <button
+                key={r.type}
+                type="button"
+                disabled={isOwnLog || pending !== null}
+                onClick={() => toggle(r)}
+                className={isOwnLog ? "" : "cursor-pointer"}
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 12,
+                  fontWeight: r.mine ? 700 : 500,
+                  color: r.mine ? t.text : t.textMuted,
+                  background: r.mine ? t.primaryLight : t.bgAlt,
+                  border: `2px solid ${t.border}`,
+                  borderRadius: 999,
+                  padding: "4px 10px",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  opacity: pending === r.type ? 0.6 : 1,
+                }}
+              >
+                <span>{REACTION_LABELS[r.type]}</span>
+                <span style={{ opacity: 0.7 }}>{r.count}</span>
+              </button>
+            ))}
+
+            {!isOwnLog && (
+              <button
+                type="button"
+                onClick={() => setPickerOpen((v) => !v)}
+                className="cursor-pointer"
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: t.textMuted,
+                  background: "transparent",
+                  border: `2px dashed ${t.border}`,
+                  borderRadius: 999,
+                  padding: "4px 10px",
+                }}
+                aria-expanded={pickerOpen}
+              >
+                {pickerOpen ? "close" : "+ react"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* picker — appears under the chip row when "+ react" is tapped. shows the full vocabulary so the user knows what's available. tap to toggle, then collapse. */}
+        {pickerOpen && !isOwnLog && (
+          <div className="flex flex-wrap gap-[6px] mt-[8px]">
+            {item.reactions.map((r) => (
+              <button
+                key={r.type}
+                type="button"
+                disabled={pending !== null}
+                onClick={() => toggle(r)}
+                className="cursor-pointer"
+                style={{
+                  fontFamily: t.fontBody,
+                  fontSize: 12,
+                  fontWeight: r.mine ? 700 : 500,
+                  color: r.mine ? t.text : t.textMuted,
+                  background: r.mine ? t.primaryLight : t.bgAlt,
+                  border: `2px solid ${t.border}`,
+                  borderRadius: 999,
+                  padding: "6px 12px",
+                  opacity: pending === r.type ? 0.6 : 1,
+                }}
+              >
+                {REACTION_LABELS[r.type]}{r.mine ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

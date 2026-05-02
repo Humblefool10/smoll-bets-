@@ -65,7 +65,10 @@ export function CircleScreen({
 
   useEffect(() => { loadFeed(); }, [loadFeed]);
 
-  // realtime: refetch feed + counts when any log in this circle changes
+  // realtime: refetch feed + counts when logs OR reactions change in this circle.
+  // reactions don't have a circle_id column — we just refetch on any reaction
+  // change and let the per-circle filter happen client-side. cheap at alpha scale;
+  // if the table grows, narrow this with a server-side join via a view.
   useEffect(() => {
     if (!circleId) return;
     const channel = supabase
@@ -73,6 +76,11 @@ export function CircleScreen({
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "logs", filter: `circle_id=eq.${circleId}` },
+        () => { loadFeed(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reactions" },
         () => { loadFeed(); }
       )
       .subscribe();
@@ -331,9 +339,9 @@ export function CircleScreen({
 
         {feed.length === 0 ? (
           <EmptyState type="feed" />
-        ) : feed.map((f) => (
-          <FeedCard key={f.id} item={f} />
-        ))}
+        ) : [...feed]
+            .sort((a, b) => b.logged_at.localeCompare(a.logged_at))
+            .map((f) => <FeedCard key={f.id} item={f} />)}
 
         </>
 
