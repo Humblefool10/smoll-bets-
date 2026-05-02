@@ -15,6 +15,7 @@ import { useCircleDetail } from "@/lib/use-circles";
 import { useAuth } from "@/lib/use-auth";
 import { fetchCircleFeed, checkAndSettle, updateCircle, resetCircleProgress } from "@/lib/circles";
 import type { FeedItem } from "@/lib/circles";
+import { currentRitualBeat } from "@/lib/beats";
 import { supabase } from "@/lib/supabase";
 
 const rankEmoji = ["🥇", "🥈", "🥉", "😬"];
@@ -116,6 +117,19 @@ export function CircleScreen({
 
   const wl = weeksLeft();
 
+  // ritual moment card (Tier 2). null when no beat is currently active.
+  const beat = circle
+    ? currentRitualBeat(
+        {
+          status: circle.status,
+          started_at: circle.started_at,
+          duration_weeks: circle.duration_weeks,
+          target: circle.target,
+        },
+        rawMembers.map((m) => ({ logCount: logCounts[m.user_id] || 0 })),
+      )
+    : null;
+
   return (
     <div
       className="flex flex-col h-full relative"
@@ -209,6 +223,23 @@ export function CircleScreen({
           </>
         ) : (
         <>
+        {beat && (
+          <div
+            className="shadow-brutal-sm"
+            style={{
+              borderRadius: 12,
+              border: `2px solid ${t.border}`,
+              background: t.primaryBg,
+              padding: "10px 14px",
+              fontFamily: t.fontBody,
+              fontSize: 14,
+              color: t.text,
+              fontWeight: 500,
+            }}
+          >
+            {beat.copy}
+          </div>
+        )}
         <div
           style={{
             fontFamily: t.font,

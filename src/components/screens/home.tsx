@@ -4,17 +4,9 @@ import { t } from "@/lib/tokens";
 import { Avatar } from "@/components/avatar";
 import { Pill } from "@/components/pill";
 import type { CircleWithRole } from "@/lib/use-circles";
+import { narrativeCue } from "@/lib/beats";
 
 const CARD_COLORS = [t.primaryLight, t.accentLight, t.positiveBg];
-
-function weeksLeft(circle: CircleWithRole): number | null {
-  if (!circle.started_at) return null;
-  const start = new Date(circle.started_at);
-  const end = new Date(start.getTime() + circle.duration_weeks * 7 * 24 * 60 * 60 * 1000);
-  const now = new Date();
-  const diff = Math.ceil((end.getTime() - now.getTime()) / (7 * 24 * 60 * 60 * 1000));
-  return Math.max(0, diff);
-}
 
 export function HomeScreen({
   displayName = "friend",
@@ -74,12 +66,7 @@ export function HomeScreen({
 
       <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-[14px]">
         {circles.map((c, i) => {
-          const wl = weeksLeft(c);
-          const statusLabel = c.status === "waiting"
-            ? "waiting"
-            : c.status === "completed"
-            ? "done"
-            : wl !== null ? `${wl}w left` : "";
+          const cueText = narrativeCue(c);
           return (
           <div
             key={c.id}
@@ -118,7 +105,7 @@ export function HomeScreen({
                   {c.habit}
                 </div>
               </div>
-              <Pill color={t.bg}>{statusLabel}</Pill>
+              <Pill color={t.bg}>{cueText}</Pill>
             </div>
             <div className="flex justify-between items-center">
               <div
