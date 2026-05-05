@@ -29,26 +29,12 @@ export default function TermsPage() {
         ← back to smoll bets
       </Link>
 
-      <div
-        style={{
-          marginTop: 16,
-          marginBottom: 24,
-          padding: "10px 14px",
-          border: "2px dashed #f34e4e",
-          borderRadius: 8,
-          fontSize: 13,
-          color: "#7a5a3a",
-          background: "#fff3ea",
-        }}
-      >
-        draft. plain english version of what using the alpha means. needs lawyer review before public launch.
-      </div>
-
       <h1
         style={{
           fontFamily: "'Space Grotesk', sans-serif",
           fontSize: 32,
           fontWeight: 700,
+          marginTop: 24,
           marginBottom: 4,
           lineHeight: 1.1,
         }}
