@@ -65,7 +65,7 @@ function StepHeader({
         <StepDots current={step} total={3} />
         <div style={{ width: 20 }} /> {/* spacer for centering */}
       </div>
-      <div
+      <h1
         style={{
           fontFamily: t.font,
           fontWeight: 700,
@@ -75,7 +75,7 @@ function StepHeader({
         }}
       >
         {title}
-      </div>
+      </h1>
       <div
         className="mt-1"
         style={{

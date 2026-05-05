@@ -172,7 +172,7 @@ export function LogScreen({
           <div className="px-5 pt-2 shrink-0">
             <div className="flex items-center gap-[10px] mb-4">
               <BackButton onClick={onBack} />
-              <span
+              <h1
                 style={{
                   fontFamily: t.font,
                   fontWeight: 700,
@@ -181,7 +181,7 @@ export function LogScreen({
                 }}
               >
                 log today
-              </span>
+              </h1>
             </div>
 
             <div
@@ -245,7 +245,7 @@ export function LogScreen({
                 className="text-right mt-[2px]"
                 style={{
                   fontFamily: t.fontBody,
-                  fontSize: 11,
+                  fontSize: 12,
                   color: t.textMuted,
                 }}
               >
@@ -426,7 +426,7 @@ export function LogScreen({
                 setPhotoPreview(null);
                 setState("idle");
               }} />
-              <span
+              <h1
                 style={{
                   fontFamily: t.font,
                   fontWeight: 700,
@@ -435,7 +435,7 @@ export function LogScreen({
                 }}
               >
                 photo proof
-              </span>
+              </h1>
             </div>
           </div>
 
@@ -508,7 +508,7 @@ export function LogScreen({
           <div className="px-5 pt-2 shrink-0">
             <div className="flex items-center gap-[10px] mb-4">
               <BackButton onClick={onBack} />
-              <span
+              <h1
                 style={{
                   fontFamily: t.font,
                   fontWeight: 700,
@@ -517,7 +517,7 @@ export function LogScreen({
                 }}
               >
                 today
-              </span>
+              </h1>
             </div>
 
             <div
@@ -556,7 +556,7 @@ export function LogScreen({
           <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-3">
             {existingLog && (
               <>
-                <div
+                <h2
                   style={{
                     fontFamily: t.font,
                     fontWeight: 700,
@@ -567,7 +567,7 @@ export function LogScreen({
                   }}
                 >
                   your log
-                </div>
+                </h2>
                 <FeedCard item={existingLog} />
               </>
             )}
@@ -577,7 +577,7 @@ export function LogScreen({
               if (others.length === 0) return null;
               return (
                 <>
-                  <div
+                  <h2
                     className="mt-2"
                     style={{
                       fontFamily: t.font,
@@ -589,7 +589,7 @@ export function LogScreen({
                     }}
                   >
                     today in {circleName || "your circle"}
-                  </div>
+                  </h2>
                   {others.map((f) => <FeedCard key={f.id} item={f} />)}
                 </>
               );
@@ -632,7 +632,7 @@ export function LogScreen({
                 <path d="M10 24l10 10L38 14" />
               </svg>
             </div>
-            <div
+            <h1
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,
@@ -642,12 +642,12 @@ export function LogScreen({
               }}
             >
               logged.
-            </div>
+            </h1>
           </div>
 
           {/* the room — what everyone else has been up to today */}
           <div className="flex-1 overflow-y-auto px-5 flex flex-col gap-3">
-            <div
+            <h2
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,
@@ -658,7 +658,7 @@ export function LogScreen({
               }}
             >
               today in {circleName || "your circle"}
-            </div>
+            </h2>
             {recentFeed.length === 0 ? (
               <div
                 className="shadow-brutal-sm"

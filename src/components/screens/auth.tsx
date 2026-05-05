@@ -58,7 +58,7 @@ export function AuthScreen({
       style={{ background: t.bg }}
     >
       <div className="pt-14 pb-4">
-        <div
+        <h1
           style={{
             fontFamily: t.font,
             fontWeight: 700,
@@ -68,7 +68,7 @@ export function AuthScreen({
           }}
         >
           jump in
-        </div>
+        </h1>
         <div
           className="mt-2"
           style={{

@@ -67,7 +67,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
             style={{
               fontWeight: 400,
               color: t.textMuted,
-              fontSize: 12,
+              fontSize: 13,
             }}
           >
             {timeAgo(item.logged_at)}

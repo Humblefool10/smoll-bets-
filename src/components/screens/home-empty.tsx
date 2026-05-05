@@ -25,7 +25,7 @@ export function HomeEmptyScreen({
       <div className="px-5 pt-2 pb-4 shrink-0">
         <div className="flex items-center justify-between">
           <div>
-            <div
+            <h1
               style={{
                 fontFamily: t.font,
                 fontWeight: 700,
@@ -35,7 +35,7 @@ export function HomeEmptyScreen({
               }}
             >
               smoll bets
-            </div>
+            </h1>
             <div
               className="mt-[2px]"
               style={{

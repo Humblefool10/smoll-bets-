@@ -9,6 +9,7 @@ import { BigButton } from "@/components/big-button";
 import { BackButton } from "@/components/back-button";
 import { SkeletonMemberRow, SkeletonBar, LoadingText } from "@/components/loading";
 import { EditCircleDialog } from "@/components/edit-circle-dialog";
+import { PopoverItem } from "@/components/popover-item";
 import { useCircleDetail } from "@/lib/use-circles";
 import { useAuth } from "@/lib/use-auth";
 import { updateCircle, deleteCircle } from "@/lib/circles";
@@ -208,7 +209,7 @@ export function CircleLobbyScreen({
       <div className="px-5 pt-2 pb-3 shrink-0">
         <div className="flex items-center gap-3 mb-3">
           <BackButton onClick={onBack} />
-          <div
+          <h1
             style={{
               fontFamily: t.font,
               fontWeight: 700,
@@ -217,33 +218,72 @@ export function CircleLobbyScreen({
             }}
           >
             {circleName}
-          </div>
+          </h1>
           <Pill color={t.primaryLight}>waiting</Pill>
           <div className="flex-1" />
           {isCreator && (
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label="circle options"
-              className="cursor-pointer"
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                border: `2px solid ${t.border}`,
-                background: t.bgAlt,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: t.shadowSm,
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill={t.text}>
-                <circle cx="7" cy="2.5" r="1.5" />
-                <circle cx="7" cy="7" r="1.5" />
-                <circle cx="7" cy="11.5" r="1.5" />
-              </svg>
-            </button>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-label="circle options"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="cursor-pointer"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: `2px solid ${t.border}`,
+                  background: menuOpen ? t.primaryLight : t.bgAlt,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: t.shadowSm,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill={t.text}>
+                  <circle cx="7" cy="2.5" r="1.5" />
+                  <circle cx="7" cy="7" r="1.5" />
+                  <circle cx="7" cy="11.5" r="1.5" />
+                </svg>
+              </button>
+
+              {menuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={closeMenu}
+                    aria-hidden="true"
+                  />
+                  <div
+                    ref={menuRef}
+                    role="menu"
+                    aria-label="circle options"
+                    className="absolute right-0 top-full mt-2 z-50 shadow-brutal"
+                    style={{
+                      background: t.bg,
+                      border: `2px solid ${t.border}`,
+                      borderRadius: 12,
+                      minWidth: 180,
+                      padding: 6,
+                    }}
+                  >
+                    <PopoverItem
+                      onClick={() => { setMenuOpen(false); setEditOpen(true); }}
+                    >
+                      edit the bet
+                    </PopoverItem>
+                    <PopoverItem
+                      onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }}
+                      danger
+                    >
+                      delete circle
+                    </PopoverItem>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -496,54 +536,6 @@ export function CircleLobbyScreen({
         )}
       </div>
 
-      {/* options menu (creator only) */}
-      {menuOpen && (
-        <div
-          className="fixed inset-0 z-40 flex items-end justify-center"
-          style={{ background: "rgba(26, 10, 0, 0.45)" }}
-          onClick={() => setMenuOpen(false)}
-        >
-          <div
-            ref={menuRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="circle options"
-            className="w-full max-w-[430px] shadow-brutal mb-4 mx-4"
-            style={{
-              borderRadius: 16,
-              border: `2px solid ${t.border}`,
-              background: t.bg,
-              padding: 16,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col gap-2">
-              <BigButton
-                bg={t.bgAlt}
-                onClick={() => { setMenuOpen(false); setEditOpen(true); }}
-                className="w-full"
-              >
-                edit the bet
-              </BigButton>
-              <BigButton
-                bg={t.danger}
-                onClick={() => { setMenuOpen(false); setDeleteConfirm(true); }}
-                className="w-full"
-              >
-                delete circle
-              </BigButton>
-              <BigButton
-                bg={t.bgAlt}
-                onClick={() => setMenuOpen(false)}
-                className="w-full"
-              >
-                cancel
-              </BigButton>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* edit dialog */}
       {circle && (
         <EditCircleDialog
@@ -590,7 +582,7 @@ export function CircleLobbyScreen({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
+            <h2
               id="delete-confirm-title"
               style={{
                 fontFamily: t.font,
@@ -601,7 +593,7 @@ export function CircleLobbyScreen({
               }}
             >
               delete this circle?
-            </div>
+            </h2>
             <div
               style={{
                 fontFamily: t.fontBody,

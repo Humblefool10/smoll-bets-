@@ -61,7 +61,7 @@ export function SplashScreen({
               sb
             </span>
           </div>
-          <div
+          <h1
             style={{
               fontFamily: t.font,
               fontWeight: 700,
@@ -71,7 +71,7 @@ export function SplashScreen({
             }}
           >
             smoll bets
-          </div>
+          </h1>
         </div>
 
         <div className="mb-5" style={fade(1)}>

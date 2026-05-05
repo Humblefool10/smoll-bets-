@@ -173,7 +173,7 @@ export function EditCircleDialog({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
+        <h2
           id="edit-circle-title"
           style={{
             fontFamily: t.font,
@@ -184,7 +184,7 @@ export function EditCircleDialog({
           }}
         >
           edit the bet
-        </div>
+        </h2>
 
         <div className="flex flex-col gap-3">
           <div>
@@ -393,7 +393,7 @@ export function EditCircleDialog({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
+            <h2
               id="reset-confirm-title"
               style={{
                 fontFamily: t.font,
@@ -404,7 +404,7 @@ export function EditCircleDialog({
               }}
             >
               reset the circle?
-            </div>
+            </h2>
             <div
               style={{
                 fontFamily: t.fontBody,

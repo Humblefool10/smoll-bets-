@@ -142,7 +142,7 @@ export function CircleCompletedScreen({
           }}
         >
           <div style={{ fontSize: 48, marginBottom: 8 }}>{header.icon}</div>
-          <div
+          <h1
             style={{
               fontFamily: t.font,
               fontWeight: 700,
@@ -153,7 +153,7 @@ export function CircleCompletedScreen({
             }}
           >
             {header.title}
-          </div>
+          </h1>
           <div
             style={{
               fontFamily: t.fontBody,
